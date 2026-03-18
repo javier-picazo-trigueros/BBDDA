@@ -3,151 +3,133 @@
 ## Estructura del proyecto
 
 ```
-ride-hailing-db/
-├── compose.yml                    # Docker: MySQL + Prometheus + Grafana
-├── schema.sql                     # DDL: tablas, índices, vistas
-├── data.sql                       # Datos de prueba
-├── queries.sql                    # Consultas operativas + stored procedures
-├── dashboard.sql                  # Consultas para dashboards
-├── backup.sql                     # Plan de backup / verificación post-restore
-├── permissions.sql                # Usuarios y permisos
-├── DESIGN.md                      # Diseño y MER
+Practica1/
+├── compose.yml                  # Docker: MySQL
+├── schema.sql                   # DDL: tablas, índices, vistas
+├── data.sql                     # Datos de prueba (carga masiva)
+├── queries.sql                  # Consultas operativas + stored procedures
+├── dashboard.sql                # Consultas para dashboards (BD y negocio)
+├── backup.sql                   # Plan de backup y verificación post-restore
+├── permissions.sql              # Usuarios, roles y permisos
+├── triggers_auditoria.sql       # Triggers de auditoría
+├── backup_mysql.sh              # Script de backup diario automatizado
+├── DESIGN.md                    # Diseño, MER y decisiones técnicas
+├── README.md                    # Este archivo
 ├── mysql/
-│   └── conf.d/
-│       └── custom.cnf             # Configuración MySQL (binlog, slow log, etc.)
-├── mysql/init/                    # Scripts ejecutados automáticamente al arrancar
-├── monitoring/
-│   └── prometheus.yml             # Configuración de Prometheus
+│   ├── conf.d/
+│   │   └── custom.cnf           # Configuración MySQL (binlog, slow log...)
+│   └── init/                    # Scripts ejecutados automáticamente al arrancar
+│       ├── 01_schema.sql
+│       ├── 02_permissions.sql
+│       └── 03_data.sql
 ├── scripts/
-│   └── backup_mysql.sh            # Script de backup diario
-└── backups/                       # Directorio de backups (creado automáticamente)
+│   └── backup_mysql.sh          # Script de backup diario
+└── backups/                     # Directorio donde se guardan los backups
 ```
 
 ---
 
 ## Requisitos
 
-- Docker Desktop ≥ 24 (o Docker Engine + Compose plugin)
-- Puerto 3306, 3000, 9090, 9104 libres en el host
+- Docker Desktop ≥ 24
+- Puerto 3306 libre en el host
 
 ---
 
-## Arranque rápido
+## Arranque rápido (primera vez)
 
-### 1. Copiar los scripts de inicialización
-
-```bash
-cp schema.sql      mysql/init/01_schema.sql
-cp permissions.sql mysql/init/02_permissions.sql
-cp data.sql        mysql/init/03_data.sql
-```
-
-> MySQL ejecuta automáticamente todos los `.sql` de `mysql/init/` en orden alfabético al primer arranque.
-
-### 2. Levantar los servicios
-
-```bash
+```powershell
 docker compose up -d
 ```
 
-Esperar a que MySQL esté listo (health check):
+MySQL ejecuta automáticamente los scripts de `mysql/init/` en orden al primer arranque.
+Esperar ~30 segundos y verificar:
 
-```bash
-docker compose ps          # verificar estado
-docker compose logs -f mysql  # ver logs en tiempo real
+```powershell
+docker compose ps
 ```
 
-### 3. Verificar la carga de datos
+Debe aparecer `mysql8` con estado `Up (healthy)`.
 
-```bash
-docker exec -it mysql8 mysql -uroot -prootpass ridehailing \
-  -e "SELECT COUNT(*) FROM viaje;"
+---
+
+## Verificar carga de datos
+
+```powershell
+docker exec -it mysql8 mysql -uroot -prootpass ridehailing -e "
+SELECT 'company'    AS tabla, COUNT(*) AS filas FROM company    UNION ALL
+SELECT 'usuario',   COUNT(*) FROM usuario   UNION ALL
+SELECT 'conductor', COUNT(*) FROM conductor UNION ALL
+SELECT 'vehiculo',  COUNT(*) FROM vehiculo  UNION ALL
+SELECT 'viaje',     COUNT(*) FROM viaje     UNION ALL
+SELECT 'oferta',    COUNT(*) FROM oferta    UNION ALL
+SELECT 'pago',      COUNT(*) FROM pago;
+"
 ```
 
 ---
 
-## Acceso a los servicios
+## Cargar datos manualmente (si el volumen ya existía)
 
-| Servicio | URL / Conexión | Credenciales |
-|----------|----------------|-------------|
-| MySQL | `localhost:3306` | root / rootpass |
-| Grafana | http://localhost:3000 | admin / grafana_pass |
-| Prometheus | http://localhost:9090 | — |
-| mysqld_exporter | http://localhost:9104/metrics | — |
+En PowerShell usar `Get-Content` en lugar de `<`:
 
----
-
-## Cargar datos de prueba manualmente
-
-Si no usas la inicialización automática:
-
-```bash
-# Crear esquema
-docker exec -i mysql8 mysql -uroot -prootpass < schema.sql
-
-# Crear usuarios y permisos
-docker exec -i mysql8 mysql -uroot -prootpass < permissions.sql
-
-# Cargar datos
-docker exec -i mysql8 mysql -uroot -prootpass < data.sql
+```powershell
+Get-Content mysql\init\01_schema.sql      | docker exec -i mysql8 mysql -uroot -prootpass
+Get-Content mysql\init\02_permissions.sql | docker exec -i mysql8 mysql -uroot -prootpass
+Get-Content mysql\init\03_data.sql        | docker exec -i mysql8 mysql -uroot -prootpass
 ```
 
 ---
 
 ## Ejecutar consultas
 
-```bash
+```powershell
 # Consultas operativas
-docker exec -i mysql8 mysql -uroot -prootpass < queries.sql
+Get-Content queries.sql    | docker exec -i mysql8 mysql -uroot -prootpass ridehailing
 
-# Dashboard
-docker exec -i mysql8 mysql -uroot -prootpass ridehailing < dashboard.sql
+# Dashboard (métricas de BD y negocio)
+Get-Content dashboard.sql  | docker exec -i mysql8 mysql -uroot -prootpass ridehailing
+
+# Triggers de auditoría
+Get-Content triggers_auditoria.sql | docker exec -i mysql8 mysql -uroot -prootpass ridehailing
 
 # Verificación post-backup
-docker exec -i mysql8 mysql -uroot -prootpass ridehailing < backup.sql
+Get-Content backup.sql     | docker exec -i mysql8 mysql -uroot -prootpass ridehailing
 ```
 
 ---
 
-## Configurar dashboard en Grafana
+## Acceso a MySQL
 
-1. Abrir http://localhost:3000 (admin / grafana_pass)
-2. **Configuration → Data Sources → Add data source → Prometheus**
-   - URL: `http://prometheus:9090`
-   - Save & Test
-3. **Dashboards → Import → ID: `7362`** (MySQL Overview)
-4. Seleccionar Prometheus como data source → Import
-
-Para el dashboard de negocio, ejecutar `dashboard.sql` directamente en MySQL Workbench o DBeaver conectado a `localhost:3306`.
+| Método | Conexión | Usuario | Contraseña |
+|--------|----------|---------|------------|
+| Terminal | `docker exec -it mysql8 mysql -uroot -prootpass` | root | rootpass |
+| Workbench / DBeaver | localhost:3306 | root | rootpass |
+| API app | localhost:3306 | api_app | ApiApp_S3cur3! |
 
 ---
 
 ## Backup manual
 
-```bash
-# Ejecutar backup ahora
+```powershell
+# Ejecutar desde Git Bash o WSL (el script es bash)
 bash scripts/backup_mysql.sh
 
-# Ver backups disponibles
-ls -lh backups/
+# Ver backups generados
+ls backups/
 ```
 
-Para programar el backup diario en cron (desde el host):
-
-```bash
-crontab -e
-# Añadir:
-0 3 * * * cd /ruta/a/ride-hailing-db && bash scripts/backup_mysql.sh >> /var/log/ridehailing_backup.log 2>&1
-```
+El script genera un `.sql.gz` con fecha en `backups/` y elimina automáticamente
+los backups con más de 7 días.
 
 ---
 
 ## Parar y limpiar
 
-```bash
+```powershell
 # Parar sin borrar datos
 docker compose down
 
-# Parar y borrar todos los datos (¡cuidado!)
+# Parar y borrar todos los datos (¡destruye el volumen!)
 docker compose down -v
 ```
