@@ -1,6 +1,7 @@
 -- ============================================================
--- triggers_auditoria.sql  —  Triggers de auditoría
--- Se pueden añadir al final de schema.sql
+-- Practica Ride Hailing - BBDD Avanazadas
+-- Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+-- Grupo: 3A
 -- ============================================================
 
 USE ridehailing;

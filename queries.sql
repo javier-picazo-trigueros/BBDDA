@@ -1,24 +1,21 @@
 -- ============================================================
--- queries.sql  —  Consultas operativas
--- Ride-Hailing Database  |  MySQL 8.0
--- (Tema 1 — DML; Tema 5 — Stored procedures y concurrencia)
+-- Practica Ride Hailing - BBDD Avanazadas
+-- Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+-- Grupo: 3A
 -- ============================================================
 
 USE ridehailing;
 
--- ============================================================
--- SECCIÓN 1: OPERATIVA BÁSICA — INSERT, UPDATE, DELETE
--- (Tema 1 — DML)
--- ============================================================
 
--- 1.1. Registrar un nuevo rider
--- Regla de oro: siempre listar las columnas en el INSERT
+
+-- SECCION 1: OPERATIVA BASICA — INSERT, UPDATE, DELETE
+
+-- Registrar un nuevo rider
 INSERT INTO usuario (tipo, nombre, apellidos, email, telefono, dni)
 VALUES ('rider', 'Nuevo', 'Rider Ejemplo', 'nuevo.rider@mail.es', '699000099', '99000099Z');
 
--- 1.2. Registrar un conductor: primero el usuario, luego el perfil
--- Se usa transacción para garantizar atomicidad (todo o nada)
--- (Tema 1 — Transacciones; Tema 5 — Transacciones con LAST_INSERT_ID)
+
+-- Registrar un conductor: primero el usuario, luego el perfil
 START TRANSACTION;
 
   INSERT INTO usuario (tipo, nombre, apellidos, email, telefono, dni)
@@ -31,7 +28,8 @@ START TRANSACTION;
 
 COMMIT;
 
--- 1.3. Solicitar un viaje (INSERT en viaje)
+
+-- Solicitar un viaje (INSERT en viaje)
 INSERT INTO viaje (
   id_rider,
   origen_lat,  origen_lng,  origen_desc,
@@ -44,33 +42,32 @@ INSERT INTO viaje (
 
 SET @id_viaje_nuevo = LAST_INSERT_ID();
 
--- 1.4. Enviar oferta a conductores disponibles
+
+-- Enviar oferta a conductores disponibles
 INSERT INTO oferta (id_viaje, id_conductor, enviada_at)
 SELECT @id_viaje_nuevo, c.id_conductor, NOW()
 FROM conductor c
 WHERE c.disponible = TRUE
 LIMIT 5;
 
--- 1.5. Borrado lógico de un usuario (UPDATE activo = FALSE)
--- Patrón recomendado: borrado lógico conserva el histórico
--- (Tema 1 — borrado físico vs lógico)
+
+-- Borrado lógico de un usuario (UPDATE activo = FALSE)
 UPDATE usuario
 SET activo = FALSE
 WHERE id_usuario = 99;
 
--- 1.6. Expirar ofertas pendientes de hace más de 5 minutos
+
+-- Expirar ofertas pendientes de hace más de 5 minutos
 -- Un UPDATE sin WHERE afecta todas las filas — siempre usar condición
 UPDATE oferta
 SET estado = 'expirada'
 WHERE estado     = 'pendiente'
   AND enviada_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE);
 
--- ============================================================
--- SECCIÓN 2: TRANSACCIONES + LOCKS (CONCURRENCIA)
--- Garantiza que solo el PRIMER conductor que acepta se queda el viaje
--- (Tema 5 — Concurrencia, bloqueos, SELECT FOR UPDATE)
--- ============================================================
 
+
+
+-- SECCIÓN 2: TRANSACCIONES + LOCKS (CONCURRENCIA)
 DELIMITER $$
 
 DROP PROCEDURE IF EXISTS sp_aceptar_oferta$$
@@ -85,8 +82,8 @@ BEGIN
   DECLARE v_estado_oferta ENUM('pendiente','aceptada','rechazada','expirada');
   DECLARE v_id_vehiculo  BIGINT;
 
+
   -- Handler: si ocurre cualquier error SQL, hace ROLLBACK automático
-  -- (Tema 5 — EXIT HANDLER FOR SQLEXCEPTION)
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN
     ROLLBACK;
@@ -95,9 +92,8 @@ BEGIN
 
   START TRANSACTION;
 
-  -- Paso 1: bloqueo exclusivo sobre la oferta (FOR UPDATE)
-  -- Evita que dos conductores procesen la misma oferta a la vez
-  -- (Tema 5 — SELECT ... FOR UPDATE: bloqueo exclusivo de fila)
+
+  -- bloqueo exclusivo sobre la oferta (FOR UPDATE)
   SELECT o.id_viaje, o.estado
   INTO   v_id_viaje, v_estado_oferta
   FROM   oferta o
@@ -111,7 +107,8 @@ BEGIN
     LEAVE sp_aceptar_oferta;
   END IF;
 
-  -- Paso 2: bloqueo exclusivo sobre el viaje
+
+  -- bloqueo exclusivo sobre el viaje
   SELECT estado INTO v_estado_viaje
   FROM viaje
   WHERE id_viaje = v_id_viaje
@@ -123,26 +120,30 @@ BEGIN
     LEAVE sp_aceptar_oferta;
   END IF;
 
-  -- Paso 3: obtener vehículo vigente del conductor
+
+  -- obtener vehículo vigente del conductor
   SELECT id_vehiculo INTO v_id_vehiculo
   FROM conductor_vehiculo
   WHERE id_conductor = p_id_conductor
     AND fecha_hasta IS NULL
   LIMIT 1;
 
-  -- Paso 4: marcar esta oferta como aceptada
+
+  -- marcar esta oferta como aceptada
   UPDATE oferta
   SET estado = 'aceptada', respondida_at = NOW()
   WHERE id_oferta = p_id_oferta;
 
-  -- Paso 5: rechazar el resto de ofertas pendientes del mismo viaje
+
+  -- rechazar el resto de ofertas pendientes del mismo viaje
   UPDATE oferta
   SET estado = 'rechazada', respondida_at = NOW()
   WHERE id_viaje     = v_id_viaje
     AND id_conductor != p_id_conductor
     AND estado       = 'pendiente';
 
-  -- Paso 6: actualizar el viaje con el conductor asignado
+
+  -- actualizar el viaje con el conductor asignado
   UPDATE viaje
   SET estado       = 'aceptado',
       id_conductor = p_id_conductor,
@@ -153,6 +154,7 @@ BEGIN
   COMMIT;
   SET p_resultado = CONCAT('OK: viaje ', v_id_viaje, ' asignado al conductor ', p_id_conductor);
 END$$
+
 
 -- Stored procedure: iniciar viaje
 DROP PROCEDURE IF EXISTS sp_iniciar_viaje$$
@@ -184,6 +186,7 @@ BEGIN
 
   SET p_resultado = CONCAT('OK: viaje ', p_id_viaje, ' en curso');
 END$$
+
 
 -- Stored procedure: finalizar viaje y crear pago
 -- Tarifa: 2.50 base + 1.20 €/km + 0.15 €/min
@@ -236,13 +239,12 @@ END$$
 
 DELIMITER ;
 
--- ============================================================
--- SECCIÓN 3: CONSULTAS CON JOIN
--- (Tema 1 — JOIN: INNER, LEFT JOIN)
--- ============================================================
 
--- 3.1. Historial de viajes de un rider con nombre del conductor
--- LEFT JOIN porque el conductor puede ser NULL (viaje aún no aceptado)
+
+
+-- SECCIÓN 3: CONSULTAS CON JOIN
+
+-- Historial de viajes de un rider con nombre del conductor
 SELECT
   v.id_viaje,
   v.estado,
@@ -262,7 +264,8 @@ LEFT JOIN company   co ON co.id_company  = c.id_company
 WHERE v.id_rider = 1
 ORDER BY v.solicitado_at DESC;
 
--- 3.2. Viajes activos ahora mismo
+
+-- Viajes activos ahora mismo
 SELECT
   v.id_viaje,
   v.estado,
@@ -280,7 +283,8 @@ LEFT JOIN vehiculo  ve ON ve.id_vehiculo = v.id_vehiculo
 WHERE v.estado IN ('solicitado', 'aceptado', 'en_curso')
 ORDER BY v.solicitado_at;
 
--- 3.3. Conductores disponibles con su vehículo actual
+
+-- Conductores disponibles con su vehículo actual
 SELECT
   c.id_conductor,
   CONCAT(u.nombre, ' ', u.apellidos) AS conductor,
@@ -298,7 +302,8 @@ WHERE c.disponible = TRUE
   AND u.activo    = TRUE
 ORDER BY c.rating DESC;
 
--- 3.4. Ingresos por conductor (últimos 30 días)
+
+-- Ingresos por conductor (últimos 30 días)
 -- GROUP BY con agregaciones: COUNT, SUM, AVG
 SELECT
   CONCAT(u.nombre, ' ', u.apellidos)                                AS conductor,
@@ -316,7 +321,8 @@ WHERE v.estado = 'finalizado'
 GROUP BY v.id_conductor, conductor, company
 ORDER BY ingresos_eur DESC;
 
--- 3.5. Tasa de aceptación por conductor
+
+-- Tasa de aceptación por conductor
 SELECT
   CONCAT(u.nombre, ' ', u.apellidos)                                          AS conductor,
   co.nombre                                                                   AS company,
@@ -331,7 +337,8 @@ JOIN company  co ON co.id_company  = c.id_company
 GROUP BY o.id_conductor, conductor, company
 ORDER BY tasa_pct DESC;
 
--- 3.6. Ingresos por company
+
+-- Ingresos por company
 SELECT
   co.nombre                                                          AS company,
   COUNT(DISTINCT c.id_conductor)                                     AS conductores,
@@ -346,12 +353,12 @@ LEFT JOIN viaje     v ON v.id_conductor = c.id_conductor
 GROUP BY co.id_company, co.nombre
 ORDER BY ingresos_total DESC;
 
--- ============================================================
--- SECCIÓN 4: SUBCONSULTAS
--- (Tema 1 — Subconsultas con IN)
--- ============================================================
 
--- 4.1. Riders que nunca han completado un viaje
+
+
+-- SECCION 4: SUBCONSULTAS
+
+-- Riders que nunca han completado un viaje
 SELECT id_usuario, nombre, apellidos, email
 FROM usuario
 WHERE tipo = 'rider'
@@ -361,7 +368,8 @@ WHERE tipo = 'rider'
     WHERE estado = 'finalizado'
   );
 
--- 4.2. Conductor con más ingresos en los últimos 90 días
+
+-- Conductor con más ingresos en los últimos 90 días
 SELECT
   CONCAT(u.nombre, ' ', u.apellidos) AS conductor,
   ROUND(SUM(v.precio_euros), 2)      AS ingresos_total

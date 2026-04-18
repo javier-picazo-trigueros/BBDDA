@@ -1,35 +1,22 @@
 -- ============================================================
--- backup.sql  —  Plan de backup y recuperación
--- Ride-Hailing Database  |  MySQL 8.0
--- (Tema 6 — Recuperación y Continuidad del Servicio)
--- ============================================================
--- ESTRATEGIA:
---   RPO = 1 hora  → binlog captura todos los cambios entre backups
---   RTO = 4 horas → restore completo + replay de binlog
---
---   1. Backup completo diario con mysqldump a las 03:00
---   2. Binlog continuo (ROW) para PITR entre backups
---   3. Retención: 7 días de backups + 7 días de binlogs
+-- Practica Ride Hailing - BBDD Avanazadas
+-- Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+-- Grupo: 3A
 -- ============================================================
 
--- ------------------------------------------------------------
--- PARTE 1: VERIFICAR CONFIGURACIÓN DEL BINLOG
--- Necesario para PITR (Tema 6 — Point-in-Time Recovery)
--- Configurado en mysql/conf.d/custom.cnf
--- ------------------------------------------------------------
-SHOW VARIABLES LIKE 'log_bin';                    -- debe ser ON
-SHOW VARIABLES LIKE 'binlog_format';              -- debe ser ROW
-SHOW VARIABLES LIKE 'binlog_expire_logs_seconds'; -- 604800 = 7 días
-SHOW BINARY LOGS;                                 -- binlogs disponibles
 
--- ------------------------------------------------------------
--- PARTE 2: VERIFICACIÓN DE INTEGRIDAD POST-RESTORE
--- Ejecutar después de restaurar un backup para validar coherencia
--- (Tema 6 — Verificación post-restore)
--- ------------------------------------------------------------
+-- verificar configuracion binlog
+SHOW VARIABLES LIKE 'log_bin';
+SHOW VARIABLES LIKE 'binlog_format';
+SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';
+SHOW BINARY LOGS;
+
+
+-- verificar integridad post-restore
 USE ridehailing;
 
--- 2.1. Conteo de filas por tabla
+
+-- conteo de filas por tabla
 SELECT 'company'    AS tabla, COUNT(*) AS filas FROM company
 UNION ALL
 SELECT 'usuario',   COUNT(*) FROM usuario
@@ -46,8 +33,8 @@ SELECT 'pago',      COUNT(*) FROM pago
 UNION ALL
 SELECT 'auditoria', COUNT(*) FROM auditoria;
 
--- 2.2. Verificar integridad referencial
--- No debe devolver ninguna fila con n > 0
+
+-- verificar integridad referencial
 SELECT 'FK viaje→rider rota' AS problema, COUNT(*) AS n
 FROM viaje v
 LEFT JOIN usuario u ON u.id_usuario = v.id_rider
@@ -71,17 +58,18 @@ FROM pago p
 LEFT JOIN viaje v ON v.id_viaje = p.id_viaje
 WHERE v.id_viaje IS NULL;
 
--- 2.3. Verificar FK en information_schema
--- (Tema 6 — Verificar integridad de FKs)
+
+-- verificar FK en information_schema
 SELECT TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME
 FROM information_schema.KEY_COLUMN_USAGE
 WHERE TABLE_SCHEMA       = 'ridehailing'
   AND REFERENCED_TABLE_NAME IS NOT NULL;
 
--- ------------------------------------------------------------
--- PARTE 3: COMANDOS DE BACKUP Y RESTORE
--- (Tema 6 — mysqldump; comandos documentados como referencia)
--- ------------------------------------------------------------
+
+
+
+
+-- comandos de backup y restore:
 
 -- BACKUP COMPLETO (ejecutar desde el host, no dentro de MySQL):
 --

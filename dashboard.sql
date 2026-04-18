@@ -1,19 +1,18 @@
 -- ============================================================
--- dashboard.sql  —  Consultas para dashboards
--- Ride-Hailing Database  |  MySQL 8.0
--- (Tema 2 — Operación diaria; Tema 7 — Monitorización y rendimiento)
+-- Practica Ride Hailing - BBDD Avanazadas
+-- Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+-- Grupo: 3A
 -- ============================================================
 
 USE ridehailing;
 
--- ============================================================
--- DASHBOARD 1: MÉTRICAS DE BASE DE DATOS
--- Fuentes: information_schema, performance_schema, SHOW STATUS/VARIABLES
--- (Tema 2 — Operación diaria; Tema 7 — Métricas clave de MySQL)
--- ============================================================
+
+
+
+-- DASHBOARD 1
+-- METRICAS DE BASE DE DATOS
 
 -- DB-1. Tamaño de cada tabla en MB
--- (Tema 2 — Ver tamaño de tablas)
 SELECT
   table_name                                            AS tabla,
   TABLE_ROWS                                            AS filas_estimadas,
@@ -25,7 +24,6 @@ WHERE table_schema = 'ridehailing'
 ORDER BY total_mb DESC;
 
 -- DB-2. Conexiones activas vs límite configurado
--- (Tema 2 — SHOW STATUS / SHOW VARIABLES; Tema 7 — Métricas de conexiones)
 SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Threads_connected')      AS conexiones_activas,
@@ -35,8 +33,6 @@ SELECT
    WHERE VARIABLE_NAME = 'Max_used_connections')    AS pico_historico;
 
 -- DB-3. Buffer pool hit ratio: debe ser > 99%
--- Si es menor, el buffer pool es demasiado pequeño (lee mucho de disco)
--- (Tema 7 — Métricas de InnoDB)
 SELECT
   ROUND(
     (1 - (
@@ -49,7 +45,6 @@ SELECT
   ) AS buffer_pool_hit_ratio_pct;
 
 -- DB-4. Contadores de operaciones (queries por tipo)
--- (Tema 7 — Métricas de queries)
 SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Slow_queries')  AS slow_queries_total,
@@ -63,7 +58,6 @@ SELECT
    WHERE VARIABLE_NAME = 'Com_delete')    AS deletes;
 
 -- DB-5. Deadlocks y esperas por locks de fila
--- (Tema 5 — Deadlocks; Tema 7 — Métricas de bloqueos)
 SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Innodb_deadlocks')         AS deadlocks,
@@ -73,7 +67,6 @@ SELECT
    WHERE VARIABLE_NAME = 'Innodb_row_lock_time_avg')  AS avg_lock_time_ms;
 
 -- DB-6. Transacciones activas ahora mismo
--- (Tema 5 — Monitorizar bloqueos con information_schema.INNODB_TRX)
 SELECT
   trx_id,
   trx_state,
@@ -84,8 +77,7 @@ SELECT
 FROM information_schema.INNODB_TRX
 ORDER BY trx_started;
 
--- DB-7. Top 10 queries más lentas
--- (Tema 7 — performance_schema: statement_analysis)
+-- DB-7. Top 10 queries mas lentas
 SELECT
   DIGEST_TEXT,
   COUNT_STAR                            AS veces_ejecutada,
@@ -98,21 +90,20 @@ ORDER BY avg_ms DESC
 LIMIT 10;
 
 -- DB-8. Índices no usados (candidatos a eliminar)
--- (Tema 7 — Mantenimiento de índices)
 SELECT OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME
 FROM sys.schema_unused_indexes
 WHERE OBJECT_SCHEMA = 'ridehailing';
 
 -- DB-9. Verificar configuración del slow query log y binlog
--- (Tema 2 — SHOW VARIABLES; Tema 6 — Binlog para PITR)
 SHOW VARIABLES LIKE 'slow_query_log%';
 SHOW VARIABLES LIKE 'long_query_time';
 SHOW VARIABLES LIKE 'log_bin';
 SHOW VARIABLES LIKE 'binlog_format';
 
--- ============================================================
+
+
+
 -- DASHBOARD 2: MÉTRICAS DE NEGOCIO
--- ============================================================
 
 -- BIZ-1. KPIs globales del sistema
 SELECT
@@ -209,6 +200,5 @@ ORDER BY total_viajes DESC
 LIMIT 10;
 
 -- BIZ-9. EXPLAIN: demostración de uso de índices
--- (Tema 4 — EXPLAIN; Tema 7 — Análisis de rendimiento)
 EXPLAIN SELECT * FROM viaje WHERE estado = 'finalizado';
 EXPLAIN SELECT * FROM viaje WHERE estado = 'finalizado' AND solicitado_at >= '2025-01-01';

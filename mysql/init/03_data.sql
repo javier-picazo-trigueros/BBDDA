@@ -1,7 +1,7 @@
 -- ============================================================
--- data.sql  —  Carga masiva de datos de prueba
--- Ride-Hailing Database  |  MySQL 8.0
--- (Tema 1 — INSERT masivo; Tema 5 — Stored procedures para carga)
+-- Practica Ride Hailing - BBDD Avanazadas
+-- Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+-- Grupo: 3A
 -- ============================================================
 
 USE ridehailing;

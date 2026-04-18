@@ -1,26 +1,19 @@
 -- ============================================================
--- permissions.sql  —  Usuarios, roles y permisos
--- Ride-Hailing Database  |  MySQL 8.0
--- (Tema 3 — Seguridad y Control de Accesos)
--- Principio: mínimo privilegio necesario por función
+-- Practica Ride Hailing - BBDD Avanazadas
+-- Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+-- Grupo: 3A
 -- ============================================================
 
--- ------------------------------------------------------------
--- 1. Roles (Tema 3 — Roles: agrupar permisos)
--- Un rol agrupa permisos para asignarlos a múltiples usuarios
--- ------------------------------------------------------------
+
+-- Roles
 CREATE ROLE IF NOT EXISTS 'rol_app';       -- API backend: operativa diaria
 CREATE ROLE IF NOT EXISTS 'rol_analytics'; -- Reporting: solo lectura
 CREATE ROLE IF NOT EXISTS 'rol_backup';    -- Proceso de backup
 CREATE ROLE IF NOT EXISTS 'rol_dba';       -- Administración
 
--- ------------------------------------------------------------
--- 2. Permisos por rol
--- (Tema 3 — GRANT y REVOKE)
--- ------------------------------------------------------------
 
--- rol_app: INSERT/UPDATE/SELECT en toda la BD, sin DDL (sin CREATE/ALTER/DROP)
--- El borrado es lógico (activo = FALSE), no se concede DELETE en general
+
+-- Permisos por rol
 GRANT SELECT, INSERT, UPDATE ON ridehailing.* TO 'rol_app';
 -- Excepción: DELETE en oferta para expirar ofertas antiguas
 GRANT DELETE ON ridehailing.oferta TO 'rol_app';
@@ -43,11 +36,10 @@ GRANT SELECT, RELOAD, LOCK TABLES, REPLICATION CLIENT, SHOW VIEW, EVENT
 GRANT ALL PRIVILEGES ON ridehailing.* TO 'rol_dba';
 GRANT PROCESS, RELOAD, REPLICATION CLIENT ON *.* TO 'rol_dba';
 
--- ------------------------------------------------------------
--- 3. Usuarios
--- (Tema 3 — Gestión de cuentas: CREATE USER)
+
+
+-- Usuarios
 -- Formato: 'usuario'@'host' — el host restringe el origen
--- ------------------------------------------------------------
 
 -- api_app: usuario de la aplicación backend
 -- '%' porque se conecta desde dentro de la red Docker
@@ -76,9 +68,10 @@ SET DEFAULT ROLE 'rol_dba' TO 'dba_admin'@'localhost';
 
 FLUSH PRIVILEGES;
 
--- ------------------------------------------------------------
--- Verificación (Tema 3 — Auditoría y supervisión)
--- ------------------------------------------------------------
+
+
+-- Verificación:
+
 -- SHOW GRANTS FOR 'api_app'@'%';
 -- SHOW GRANTS FOR 'bi_reports'@'%';
 -- SHOW GRANTS FOR 'backup_user'@'localhost';

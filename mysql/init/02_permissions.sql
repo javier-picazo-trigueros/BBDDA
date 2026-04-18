@@ -1,8 +1,7 @@
 -- ============================================================
--- permissions.sql  —  Usuarios, roles y permisos
--- Ride-Hailing Database  |  MySQL 8.0
--- (Tema 3 — Seguridad y Control de Accesos)
--- Principio: mínimo privilegio necesario por función
+-- Practica Ride Hailing - BBDD Avanazadas
+-- Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+-- Grupo: 3A
 -- ============================================================
 
 -- ------------------------------------------------------------

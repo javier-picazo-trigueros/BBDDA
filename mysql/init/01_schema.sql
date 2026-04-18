@@ -1,12 +1,10 @@
 -- ============================================================
--- schema.sql  —  Base de datos Ride-Hailing
--- Motor: MySQL 8.0  |  Engine: InnoDB
--- Basado en el temario de Bases de Datos Avanzadas
+-- Practica Ride Hailing - BBDD Avanazadas
+-- Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+-- Grupo: 3A
 -- ============================================================
 
--- ------------------------------------------------------------
 -- 1. Crear la base de datos (Tema 1 y Tema 4)
--- ------------------------------------------------------------
 CREATE DATABASE IF NOT EXISTS ridehailing
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_0900_ai_ci;
