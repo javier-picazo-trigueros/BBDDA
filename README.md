@@ -1,135 +1,109 @@
-# README — Ride-Hailing Database
+# Ride-Hailing Database
 
-## Estructura del proyecto
+Base de datos relacional para una plataforma de ride-hailing (Uber/Bolt/Lyft) sobre MySQL 8.0.
 
-```
-Practica1/
-├── compose.yml                  # Docker: MySQL
-├── schema.sql                   # DDL: tablas, índices, vistas
-├── data.sql                     # Datos de prueba (carga masiva)
-├── queries.sql                  # Consultas operativas + stored procedures
-├── dashboard.sql                # Consultas para dashboards (BD y negocio)
-├── backup.sql                   # Plan de backup y verificación post-restore
-├── permissions.sql              # Usuarios, roles y permisos
-├── triggers_auditoria.sql       # Triggers de auditoría
-├── backup_mysql.sh              # Script de backup diario automatizado
-├── DESIGN.md                    # Diseño, MER y decisiones técnicas
-├── README.md                    # Este archivo
+## Integrantes del equipo
+
+| Nombre                       | Aportación |
+|------------------------------|------------|
+| Javier Picazo                |            |
+| Alejandro Bernaldo de Quiros |            |
+| Jaime Ordovás                |            |
+| Pablo Cerdeira               |            |
+
+## Estructura del repositorio
+├── schema.sql        # Creación de BD, tablas, índices, vistas y triggers
+├── data.sql          # Carga masiva de datos de prueba
+├── queries.sql       # Consultas operativas, SPs con locks y transacciones
+├── dashboard.sql     # Dashboards de BD y de negocio
+├── backup.sql        # Plan de backup, verificación y comandos PITR
+├── permissions.sql   # Roles, usuarios y permisos
+├── compose.yml       # Docker Compose para despliegue
 ├── mysql/
-│   ├── conf.d/
-│   │   └── custom.cnf           # Configuración MySQL (binlog, slow log...)
-│   └── init/                    # Scripts ejecutados automáticamente al arrancar
-│       ├── 01_schema.sql
-│       ├── 02_permissions.sql
-│       └── 03_data.sql
-├── scripts/
-│   └── backup_mysql.sh          # Script de backup diario
-└── backups/                     # Directorio donde se guardan los backups
-```
-
----
+│   └── custom.cnf    # Configuración MySQL (binlog, slow log, InnoDB)
+├── DESIGN.md         # Diseño: MER con Mermaid, decisiones, índices
+├── presentacion.pdf  # Presentación para la defensa
+└── README.md         # Este archivo
 
 ## Requisitos
 
-- Docker Desktop ≥ 24
-- Puerto 3306 libre en el host
+- Docker y Docker Compose instalados.
 
----
+## Arrancar la base de datos
 
-## Arranque rápido (primera vez)
-
-```powershell
+```bash
+# 1. Levantar el contenedor (primera vez carga schema + datos automáticamente)
 docker compose up -d
-```
 
-MySQL ejecuta automáticamente los scripts de `mysql/init/` en orden al primer arranque.
-Esperar ~30 segundos y verificar:
-
-```powershell
+# 2. Verificar que está sano
 docker compose ps
+
+# 3. Conectarse a MySQL
+docker exec -it ridehailing-db mysql -uroot -prootpass ridehailing
 ```
 
-Debe aparecer `mysql8` con estado `Up (healthy)`.
+La primera vez que se levanta el contenedor, Docker ejecuta automáticamente en orden:
 
----
+1. `schema.sql` — Crea la BD `ridehailing`, tablas, índices, vistas y triggers.
+2. `data.sql` — Inserta datos de prueba (5 companies, 30 usuarios, 10 vehículos, 60+ viajes, ofertas y pagos).
+3. `permissions.sql` — Crea roles y usuarios de BD.
 
-## Verificar carga de datos
+> Los scripts de init solo se ejecutan si el volumen `mysql_data` está vacío. Para reiniciar desde cero: `docker compose down -v && docker compose up -d`.
 
-```powershell
-docker exec -it mysql8 mysql -uroot -prootpass ridehailing -e "
-SELECT 'company'    AS tabla, COUNT(*) AS filas FROM company    UNION ALL
-SELECT 'usuario',   COUNT(*) FROM usuario   UNION ALL
-SELECT 'conductor', COUNT(*) FROM conductor UNION ALL
-SELECT 'vehiculo',  COUNT(*) FROM vehiculo  UNION ALL
-SELECT 'viaje',     COUNT(*) FROM viaje     UNION ALL
-SELECT 'oferta',    COUNT(*) FROM oferta    UNION ALL
-SELECT 'pago',      COUNT(*) FROM pago;
-"
-```
+## Ejecutar dashboards
 
----
+```bash
+# Dashboard de métricas de base de datos + negocio
+docker exec -i ridehailing-db mysql -uroot -prootpass ridehailing < dashboard.sql
 
-## Cargar datos manualmente (si el volumen ya existía)
-
-En PowerShell usar `Get-Content` en lugar de `<`:
-
-```powershell
-Get-Content mysql\init\01_schema.sql      | docker exec -i mysql8 mysql -uroot -prootpass
-Get-Content mysql\init\02_permissions.sql | docker exec -i mysql8 mysql -uroot -prootpass
-Get-Content mysql\init\03_data.sql        | docker exec -i mysql8 mysql -uroot -prootpass
-```
-
----
-
-## Ejecutar consultas
-
-```powershell
 # Consultas operativas
-Get-Content queries.sql    | docker exec -i mysql8 mysql -uroot -prootpass ridehailing
-
-# Dashboard (métricas de BD y negocio)
-Get-Content dashboard.sql  | docker exec -i mysql8 mysql -uroot -prootpass ridehailing
-
-# Triggers de auditoría
-Get-Content triggers_auditoria.sql | docker exec -i mysql8 mysql -uroot -prootpass ridehailing
-
-# Verificación post-backup
-Get-Content backup.sql     | docker exec -i mysql8 mysql -uroot -prootpass ridehailing
+docker exec -i ridehailing-db mysql -uroot -prootpass ridehailing < queries.sql
 ```
 
----
+## Probar la concurrencia (aceptación de oferta)
 
-## Acceso a MySQL
+```sql
+-- Conectarse a MySQL y ejecutar:
+USE ridehailing;
 
-| Método | Conexión | Usuario | Contraseña |
-|--------|----------|---------|------------|
-| Terminal | `docker exec -it mysql8 mysql -uroot -prootpass` | root | rootpass |
-| Workbench / DBeaver | localhost:3306 | root | rootpass |
-| API app | localhost:3306 | api_app | ApiApp_S3cur3! |
-
----
-
-## Backup manual
-
-```powershell
-# Ejecutar desde Git Bash o WSL (el script es bash)
-bash scripts/backup_mysql.sh
-
-# Ver backups generados
-ls backups/
+-- Aceptar la oferta 1 por el conductor 21
+CALL sp_aceptar_oferta(1, 21, @resultado);
+SELECT @resultado;
 ```
 
-El script genera un `.sql.gz` con fecha en `backups/` y elimina automáticamente
-los backups con más de 7 días.
+## Backup y restore
 
----
+```bash
+# Backup completo
+docker exec ridehailing-db mysqldump \
+  -uroot -prootpass \
+  --databases ridehailing \
+  --single-transaction \
+  --routines --triggers --events \
+  --set-gtid-purged=OFF \
+  | gzip > backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# Restore
+zcat backups/backup_YYYYMMDD.sql.gz | \
+  docker exec -i ridehailing-db mysql -uroot -prootpass
+```
+
+## Conectarse con distintos usuarios
+
+```bash
+# API backend (lectura + escritura operativa)
+docker exec -it ridehailing-db mysql -uapi_app -p'ApiApp_S3cur3!' ridehailing
+
+# Reporting (solo lectura sobre vistas)
+docker exec -it ridehailing-db mysql -ubi_reports -p'BiReports_R3ad0nly!' ridehailing
+```
 
 ## Parar y limpiar
 
-```powershell
-# Parar sin borrar datos
+```bash
+# Parar (conserva datos)
 docker compose down
 
-# Parar y borrar todos los datos (¡destruye el volumen!)
+# Parar y borrar datos (siguiente up recarga todo desde cero)
 docker compose down -v
 ```

@@ -1,238 +1,218 @@
 # DESIGN.md — Diseño de la Base de Datos Ride-Hailing
 
-## 1. Descripción General
+## 1. Introducción
 
-Base de datos relacional para una plataforma de ride-hailing (estilo Uber/Bolt).  
-Motor: **MySQL 8.0** con `InnoDB` en todas las tablas.
-
----
+Base de datos relacional para una plataforma de ride-hailing (tipo Uber/Bolt/Lyft) sobre **MySQL 8.0 con InnoDB**. El sistema cubre el ciclo de vida completo: un rider solicita un viaje, se generan ofertas a múltiples conductores, el primero que acepta se queda el viaje y el pago.
 
 ## 2. Modelo Entidad-Relación (MER)
 
 ```mermaid
 erDiagram
+    COMPANY ||--o{ CONDUCTOR : "emplea"
+    USUARIO ||--o| CONDUCTOR : "extiende (1:1)"
+    USUARIO ||--o{ VIAJE : "solicita (rider)"
+    CONDUCTOR ||--o{ VIAJE : "realiza"
+    CONDUCTOR ||--o{ OFERTA : "recibe"
+    CONDUCTOR }o--o{ VEHICULO : "conduce (N:N temporal)"
+    VIAJE ||--o{ OFERTA : "genera"
+    VIAJE ||--o| PAGO : "produce (1:1)"
+    VIAJE ||--o| VEHICULO : "usa"
+    USUARIO ||--o{ PAGO : "paga (rider)"
+    CONDUCTOR ||--o{ PAGO : "cobra"
+
     COMPANY {
-        bigint id_company PK
-        varchar nombre
-        varchar cif
-        varchar email
-        boolean activo
+        BIGINT id_company PK
+        VARCHAR nombre
+        VARCHAR cif UK
+        VARCHAR email UK
+        BOOLEAN activo
+        DATETIME created_at
+        DATETIME updated_at
     }
 
     USUARIO {
-        bigint id_usuario PK
-        enum tipo "rider | conductor"
-        varchar nombre
-        varchar apellidos
-        varchar email
-        varchar telefono
-        varchar dni
-        boolean activo
+        BIGINT id_usuario PK
+        ENUM tipo "rider | conductor"
+        VARCHAR nombre
+        VARCHAR apellidos
+        VARCHAR email UK
+        VARCHAR telefono
+        VARCHAR dni UK
+        BOOLEAN activo
+        DATETIME created_at
+        DATETIME updated_at
     }
 
     CONDUCTOR {
-        bigint id_conductor PK "FK→usuario"
-        bigint id_company   FK
-        varchar licencia
-        date fecha_alta
-        boolean disponible
-        decimal rating
+        BIGINT id_conductor PK_FK "FK → usuario"
+        BIGINT id_company FK
+        VARCHAR licencia UK
+        DATE fecha_alta
+        BOOLEAN disponible
+        DECIMAL rating
+        DATETIME created_at
+        DATETIME updated_at
     }
 
     VEHICULO {
-        bigint id_vehiculo PK
-        varchar matricula
-        varchar marca
-        varchar modelo
-        year anio
-        varchar color
-        boolean activo
+        BIGINT id_vehiculo PK
+        VARCHAR matricula UK
+        VARCHAR marca
+        VARCHAR modelo
+        YEAR anio
+        VARCHAR color
+        BOOLEAN activo
+        DATETIME created_at
+        DATETIME updated_at
     }
 
     CONDUCTOR_VEHICULO {
-        bigint id_conductor FK
-        bigint id_vehiculo  FK
-        date fecha_desde
-        date fecha_hasta "NULL = vigente"
+        BIGINT id_conductor PK_FK
+        BIGINT id_vehiculo PK_FK
+        DATE fecha_desde PK
+        DATE fecha_hasta "NULL = vigente"
     }
 
     VIAJE {
-        bigint id_viaje PK
-        bigint id_rider      FK
-        bigint id_conductor  FK
-        bigint id_vehiculo   FK
-        enum estado "solicitado|aceptado|en_curso|finalizado|cancelado"
-        decimal origen_lat
-        decimal origen_lng
-        varchar origen_desc
-        decimal destino_lat
-        decimal destino_lng
-        varchar destino_desc
-        decimal distancia_km
-        decimal duracion_min
-        decimal precio_euros
-        datetime solicitado_at
-        datetime aceptado_at
-        datetime inicio_at
-        datetime fin_at
-        datetime cancelado_at
+        BIGINT id_viaje PK
+        BIGINT id_rider FK
+        BIGINT id_conductor FK "NULL hasta aceptación"
+        BIGINT id_vehiculo FK
+        ENUM estado "solicitado | aceptado | en_curso | finalizado | cancelado"
+        DECIMAL origen_lat
+        DECIMAL origen_lng
+        VARCHAR origen_desc
+        DECIMAL destino_lat
+        DECIMAL destino_lng
+        VARCHAR destino_desc
+        DECIMAL distancia_km
+        DECIMAL duracion_min
+        DECIMAL precio_euros
+        DATETIME solicitado_at
+        DATETIME aceptado_at
+        DATETIME inicio_at
+        DATETIME fin_at
+        DATETIME cancelado_at
+        VARCHAR motivo_cancelacion
     }
 
     OFERTA {
-        bigint id_oferta PK
-        bigint id_viaje     FK
-        bigint id_conductor FK
-        enum estado "pendiente|aceptada|rechazada|expirada"
-        datetime enviada_at
-        datetime respondida_at
+        BIGINT id_oferta PK
+        BIGINT id_viaje FK
+        BIGINT id_conductor FK
+        ENUM estado "pendiente | aceptada | rechazada | expirada"
+        DATETIME enviada_at
+        DATETIME respondida_at
     }
 
     PAGO {
-        bigint id_pago PK
-        bigint id_viaje     FK
-        bigint id_rider     FK
-        bigint id_conductor FK
-        decimal importe_euros
-        enum metodo
-        enum estado
-        datetime procesado_at
+        BIGINT id_pago PK
+        BIGINT id_viaje FK_UK "1 pago por viaje"
+        BIGINT id_rider FK
+        BIGINT id_conductor FK
+        DECIMAL importe_euros
+        ENUM metodo "tarjeta | efectivo | wallet"
+        ENUM estado "pendiente | completado | fallido | reembolsado"
+        DATETIME procesado_at
     }
 
     AUDITORIA {
-        bigint id_auditoria PK
-        varchar tabla
-        enum operacion
-        bigint id_registro
-        varchar campo
-        text valor_old
-        text valor_new
-        varchar usuario_bd
-        datetime fecha
+        BIGINT id_auditoria PK
+        VARCHAR tabla
+        ENUM operacion "INSERT | UPDATE | DELETE"
+        BIGINT id_registro
+        VARCHAR campo
+        TEXT valor_old
+        TEXT valor_new
+        VARCHAR usuario_bd
+        DATETIME fecha
     }
-
-    COMPANY      ||--o{ CONDUCTOR         : "tiene"
-    USUARIO      ||--|| CONDUCTOR         : "es un"
-    CONDUCTOR    ||--o{ CONDUCTOR_VEHICULO : "usa"
-    VEHICULO     ||--o{ CONDUCTOR_VEHICULO : "asignado a"
-    USUARIO      ||--o{ VIAJE             : "solicita (rider)"
-    CONDUCTOR    ||--o{ VIAJE             : "realiza"
-    VEHICULO     ||--o{ VIAJE             : "transporta"
-    VIAJE        ||--o{ OFERTA            : "genera"
-    CONDUCTOR    ||--o{ OFERTA            : "recibe"
-    VIAJE        ||--|| PAGO              : "tiene"
-    USUARIO      ||--o{ PAGO             : "paga (rider)"
-    CONDUCTOR    ||--o{ PAGO             : "cobra"
 ```
 
----
+## 3. Decisiones de diseño
 
-## 3. Descripción de Tablas
+### 3.1. Herencia usuario → conductor (patrón tabla única + extensión)
 
-### `company`
-Empresas propietarias de flotas. Un conductor pertenece a exactamente una company.
+Riders y conductores comparten la tabla `usuario` con un campo `tipo` ENUM. El conductor tiene una tabla adicional `conductor` con relación 1:1 (su PK es FK a `usuario`). Esto permite:
 
-### `usuario`
-Tabla unificada de personas del sistema. El campo `tipo` distingue riders de conductores.
-Usar una sola tabla evita duplicar email, dni y datos de contacto.
+- Unicidad global de email y DNI en una sola tabla.
+- JOINs simples para obtener datos completos del conductor.
+- Evitar duplicación de columnas comunes (nombre, teléfono, etc.).
 
-### `conductor`
-Extiende `usuario` (relación 1:1) con datos propios del conductor: empresa, licencia, disponibilidad y rating.
-La PK `id_conductor` es también la FK a `usuario`, garantizando que todo conductor es antes un usuario.
+### 3.2. Relación N:N temporal conductor ↔ vehículo
 
-### `vehiculo`
-Catálogo de vehículos de la flota. Un vehículo puede ser asignado a varios conductores a lo largo del tiempo.
+La tabla `conductor_vehiculo` tiene PK compuesta `(id_conductor, id_vehiculo, fecha_desde)` y un campo `fecha_hasta` nullable. Si `fecha_hasta IS NULL`, la asignación está vigente. Esto permite mantener historial de qué vehículo usó cada conductor en cada período.
 
-### `conductor_vehiculo`
-Tabla intermedia N:N con vigencia temporal. `fecha_hasta = NULL` indica la asignación activa.
+### 3.3. Ciclo de vida del viaje con timestamps
 
-### `viaje`
-Entidad central. Almacena el ciclo de vida completo (timestamps por estado), geolocalización y métricas finales.
-`id_conductor` es NULL hasta que alguien acepta la oferta.
+El viaje tiene un campo `estado` ENUM con 5 valores posibles y un timestamp dedicado para cada transición (`solicitado_at`, `aceptado_at`, `inicio_at`, `fin_at`, `cancelado_at`). Esto permite calcular tiempos de espera, duración real, etc. sin perder información.
 
-### `oferta`
-Registro de cada oferta enviada a cada conductor para un viaje.  
-La restricción `UNIQUE (id_viaje, id_conductor)` impide duplicados.  
-El stored procedure `sp_aceptar_oferta` usa `FOR UPDATE` para garantizar que **solo el primer conductor en aceptar** se queda el viaje (evita race conditions).
+### 3.4. Concurrencia en aceptación de ofertas
 
-### `pago`
-Un viaje genera exactamente un pago (`UNIQUE id_viaje`). Incluye método y estado del cobro.
+El requisito crítico es que **solo el primer conductor que acepte se quede el viaje**. Se resuelve con el stored procedure `sp_aceptar_oferta` que usa `SELECT ... FOR UPDATE` sobre la oferta y el viaje dentro de una transacción. Al bloquear la fila, cualquier conductor concurrente espera y al obtener el lock ve que el viaje ya no está en estado `solicitado`.
 
-### `auditoria`
-Registro de cambios sensibles. Se puebla mediante triggers en tablas clave.
+### 3.5. Pago 1:1 con viaje
 
----
+La tabla `pago` tiene un `UNIQUE KEY` sobre `id_viaje`, garantizando que cada viaje finalizado produce exactamente un pago. Esto simplifica la contabilidad y evita duplicados.
+
+### 3.6. Borrado lógico
+
+Ninguna entidad se borra físicamente. Usuarios, vehículos y companies tienen un campo `activo` (BOOLEAN). Las FKs usan `ON DELETE RESTRICT` para impedir borrados accidentales. Las ofertas se marcan como `expirada` en lugar de eliminarse.
+
+### 3.7. Auditoría automática con triggers
+
+Tres triggers `AFTER INSERT/UPDATE` sobre `viaje` y `oferta` registran cambios en la tabla `auditoria`. Se usa el operador NULL-safe `<=>` para comparar valores que pueden ser NULL.
 
 ## 4. Índices
 
-| Índice | Tabla | Columnas | Propósito |
-|--------|-------|----------|-----------|
-| `idx_viaje_estado` | viaje | estado | Filtrar viajes activos |
-| `idx_viaje_rider` | viaje | id_rider | Historial de un rider |
-| `idx_viaje_conductor` | viaje | id_conductor | Viajes de un conductor |
-| `idx_viaje_solicitado_at` | viaje | solicitado_at | Ordenar por fecha |
-| `idx_viaje_estado_fecha` | viaje | estado, solicitado_at | Dashboard (estado+fecha) |
-| `idx_oferta_viaje_estado` | oferta | id_viaje, estado | Ofertas pendientes de un viaje |
-| `idx_oferta_conductor` | oferta | id_conductor | Historial de ofertas de un conductor |
-| `idx_conductor_company` | conductor | id_company | Conductores de una company |
-| `idx_conductor_disponible` | conductor | disponible | Conductores disponibles |
-| `idx_pago_conductor_estado` | pago | id_conductor, estado | Ingresos por conductor |
+| Índice | Tabla | Columnas | Justificación |
+|--------|-------|----------|---------------|
+| `idx_viaje_estado` | viaje | (estado) | Filtro más frecuente en dashboards y operativa |
+| `idx_viaje_rider` | viaje | (id_rider) | Historial de viajes de un rider |
+| `idx_viaje_conductor` | viaje | (id_conductor) | Viajes por conductor, ingresos |
+| `idx_viaje_solicitado_at` | viaje | (solicitado_at) | Ordenación cronológica, filtros por fecha |
+| `idx_viaje_estado_fecha` | viaje | (estado, solicitado_at) | Compuesto: viajes finalizados en rango de fechas |
+| `idx_oferta_viaje_estado` | oferta | (id_viaje, estado) | Buscar ofertas pendientes de un viaje (sp_aceptar_oferta) |
+| `idx_oferta_conductor` | oferta | (id_conductor) | Tasa de aceptación por conductor |
+| `idx_usuario_nombre` | usuario | (nombre, apellidos) | Búsquedas por nombre |
+| `idx_usuario_tipo` | usuario | (tipo) | Filtrar riders vs conductores |
+| `idx_conductor_company` | conductor | (id_company) | Métricas por company |
+| `idx_conductor_disponible` | conductor | (disponible) | Conductores disponibles para ofertas |
+| `idx_pago_conductor` | pago | (id_conductor, estado) | Ingresos por conductor |
+| `idx_pago_rider` | pago | (id_rider) | Historial de pagos del rider |
+| `idx_audit_tabla_id` | auditoria | (tabla, id_registro) | Auditoría de un registro concreto |
+| `idx_audit_fecha` | auditoria | (fecha) | Auditoría por rango temporal |
 
----
+## 5. Vistas
 
-## 5. Concurrencia — Cómo se evita la doble aceptación
+| Vista | Propósito |
+|-------|-----------|
+| `v_viajes_detalle` | Desnormaliza viaje + rider + conductor + company + vehículo. Simplifica consultas del dashboard. |
+| `v_conductor_publico` | Expone solo datos no sensibles del conductor (sin DNI ni email). Patrón de seguridad por vistas. |
+| `v_metricas_conductor` | Agrega KPIs por conductor: viajes, ingresos, km medio, tasa de aceptación. |
+| `v_metricas_company` | Agrega KPIs por company: conductores, viajes, ingresos, tasa de aceptación. |
 
-El requisito más crítico: **solo un conductor acepta un viaje**.
+## 6. Stored procedures
 
-El stored procedure `sp_aceptar_oferta` implementa:
+| Procedure | Función | Mecanismo de concurrencia |
+|-----------|---------|---------------------------|
+| `sp_aceptar_oferta` | Acepta una oferta, asigna conductor al viaje, rechaza el resto de ofertas | `SELECT ... FOR UPDATE` sobre oferta y viaje |
+| `sp_iniciar_viaje` | Cambia estado a `en_curso`, marca conductor como no disponible | `FOR UPDATE` sobre viaje |
+| `sp_finalizar_viaje` | Calcula precio, finaliza viaje, crea pago, libera conductor | `FOR UPDATE` sobre viaje |
 
-```
-START TRANSACTION
-  SELECT oferta ... FOR UPDATE       ← bloqueo exclusivo sobre la oferta
-  SELECT viaje  ... FOR UPDATE       ← bloqueo exclusivo sobre el viaje
-  if oferta.estado != 'pendiente' → ROLLBACK
-  if viaje.estado  != 'solicitado' → ROLLBACK
-  UPDATE oferta SET estado = 'aceptada'
-  UPDATE oferta (resto) SET estado = 'rechazada'
-  UPDATE viaje  SET estado = 'aceptado', id_conductor = ...
-COMMIT
-```
+## 7. Seguridad (resumen)
 
-`FOR UPDATE` pone un bloqueo exclusivo de fila (InnoDB), de modo que si dos conductores lanzan `sp_aceptar_oferta` al mismo tiempo, el segundo esperará al COMMIT del primero y luego verá que el viaje ya está `aceptado` → ROLLBACK.
+4 roles con principio de mínimo privilegio:
 
----
+- **rol_app**: SELECT/INSERT/UPDATE + EXECUTE (API backend).
+- **rol_analytics**: SELECT solo sobre vistas (reporting).
+- **rol_backup**: SELECT + RELOAD + LOCK TABLES (mysqldump).
+- **rol_dba**: ALL PRIVILEGES sobre ridehailing + PROCESS/RELOAD global.
 
-## 6. Usuarios y Seguridad
+## 8. Backup (resumen)
 
-| Usuario | Rol | Permisos |
-|---------|-----|----------|
-| `api_app` | `rol_app` | SELECT, INSERT, UPDATE + DELETE en oferta + EXECUTE |
-| `bi_reports` | `rol_analytics` | SELECT solo en vistas (sin tablas) |
-| `backup_user` | `rol_backup` | SELECT + RELOAD + LOCK TABLES |
-| `exporter` | `rol_monitor` | PROCESS + REPLICATION CLIENT + SELECT |
-| `dba_admin` | `rol_dba` | ALL en ridehailing, solo desde localhost |
-
----
-
-## 7. Plan de Backup
-
-| Backup | Frecuencia | Herramienta | Retención |
-|--------|-----------|-------------|-----------|
-| Completo lógico | Diario 03:00 | `mysqldump` + gzip | 7 días |
-| Binlog incremental | Continuo | MySQL binlog (ROW) | 7 días |
-
-**RPO = 1 hora** (binlog captura todos los cambios entre backups).  
-**RTO = 4 horas** (restore completo + replay de binlog).
-
-Para PITR: restaurar el backup completo más reciente y aplicar el binlog hasta el momento deseado con `mysqlbinlog --stop-datetime`.
-
----
-
-## 8. Monitorización
-
-Stack: **Prometheus + Grafana + mysqld_exporter** (todo en Docker Compose).
-
-Dashboards disponibles:
-- **DB metrics**: conexiones, buffer pool hit ratio, slow queries, deadlocks, tamaño de tablas.
-- **Business metrics**: viajes por hora, tasa de aceptación, ingresos por conductor/company, tiempos de espera.
-
-Importar en Grafana → Dashboard ID `7362` (MySQL Overview).
+- **RPO**: 1 hora (binlog continuo entre backups).
+- **RTO**: 4 horas (restore completo + replay binlog).
+- Backup completo diario con `mysqldump --single-transaction` a las 03:00.
+- Binlog en formato ROW para PITR.
+- Retención: 7 días de backups + 7 días de binlogs.
