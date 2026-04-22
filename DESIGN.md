@@ -1,11 +1,14 @@
-# DESIGN.md — Diseño de la Base de Datos Ride-Hailing
+### Practica Ride Hailing - BBDD Avanazadas
+### Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+### Grupo: 3A
 
+---
+
+# Diseño de la Base de Datos Ride-Hailing
 ## 1. Introducción
+Base de datos relacional para una plataforma de ride-hailing (tipo Uber/Cabify) sobre **MySQL 8.0 con InnoDB**. El sistema cubre el ciclo de vida completo: un rider solicita un viaje, se generan ofertas a multiples conductores, el primero que acepta se queda el viaje y el pago.
 
-Base de datos relacional para una plataforma de ride-hailing (tipo Uber/Bolt/Lyft) sobre **MySQL 8.0 con InnoDB**. El sistema cubre el ciclo de vida completo: un rider solicita un viaje, se generan ofertas a múltiples conductores, el primero que acepta se queda el viaje y el pago.
-
-## 2. Modelo Entidad-Relación (MER)
-
+## 2. Modelo Entidad-Relacion con Mermaid
 ```mermaid
 erDiagram
     COMPANY ||--o{ CONDUCTOR : "emplea"
@@ -130,41 +133,33 @@ erDiagram
 ```
 
 ## 3. Decisiones de diseño
-
-### 3.1. Herencia usuario → conductor (patrón tabla única + extensión)
-
-Riders y conductores comparten la tabla `usuario` con un campo `tipo` ENUM. El conductor tiene una tabla adicional `conductor` con relación 1:1 (su PK es FK a `usuario`). Esto permite:
+### 3.1. Herencia usuario -> conductor
+Riders y conductores comparten la tabla `usuario` con un campo `tipo` ENUM. El conductor tiene una tabla adicional `conductor` con relación 1:1 (su PK es FK a `usuario`). Esto permite...
 
 - Unicidad global de email y DNI en una sola tabla.
 - JOINs simples para obtener datos completos del conductor.
-- Evitar duplicación de columnas comunes (nombre, teléfono, etc.).
+- Evitar duplicacion de columnas comunes (nombre, tlf, etc...).
 
-### 3.2. Relación N:N temporal conductor ↔ vehículo
-
-La tabla `conductor_vehiculo` tiene PK compuesta `(id_conductor, id_vehiculo, fecha_desde)` y un campo `fecha_hasta` nullable. Si `fecha_hasta IS NULL`, la asignación está vigente. Esto permite mantener historial de qué vehículo usó cada conductor en cada período.
+### 3.2. Relacion N:N temporal conductor <-> vehículo
+La tabla `conductor_vehiculo` tiene PK compuesta `(id_conductor, id_vehiculo, fecha_desde)` y un campo `fecha_hasta` nullable. Si `fecha_hasta IS NULL`, la asignacion esta vigente. Esto permite mantener historial de que vehiculo uso cada conductor en cada momento.
 
 ### 3.3. Ciclo de vida del viaje con timestamps
-
-El viaje tiene un campo `estado` ENUM con 5 valores posibles y un timestamp dedicado para cada transición (`solicitado_at`, `aceptado_at`, `inicio_at`, `fin_at`, `cancelado_at`). Esto permite calcular tiempos de espera, duración real, etc. sin perder información.
+El viaje tiene un campo `estado` ENUM con 5 valores posibles y un timestamp dedicado para cada transición (`solicitado_at`, `aceptado_at`, `inicio_at`, `fin_at`, `cancelado_at`). Esto permite calcular tiempos de espera, duración real, etc. sin perder informacion.
 
 ### 3.4. Concurrencia en aceptación de ofertas
-
-El requisito crítico es que **solo el primer conductor que acepte se quede el viaje**. Se resuelve con el stored procedure `sp_aceptar_oferta` que usa `SELECT ... FOR UPDATE` sobre la oferta y el viaje dentro de una transacción. Al bloquear la fila, cualquier conductor concurrente espera y al obtener el lock ve que el viaje ya no está en estado `solicitado`.
+El requisito principal es que **solo el primer conductor que acepte se quede el viaje**. Se resuelve con el stored procedure `sp_aceptar_oferta` que usa `SELECT ... FOR UPDATE` sobre la oferta y el viaje dentro de una transaccion. Al bloquear la fila, cualquier conductor concurrente espera y al obtener el lock ve que el viaje ya no esta en `solicitado`.
 
 ### 3.5. Pago 1:1 con viaje
-
 La tabla `pago` tiene un `UNIQUE KEY` sobre `id_viaje`, garantizando que cada viaje finalizado produce exactamente un pago. Esto simplifica la contabilidad y evita duplicados.
 
 ### 3.6. Borrado lógico
+Ninguna entidad se borra fisicamente. Usuarios, vehículos y companies tienen un campo `activo` (BOOLEAN). Las FKs usan `ON DELETE RESTRICT` para impedir borrados accidentales. Las ofertas se marcan como `expirada` en lugar de eliminarse.
 
-Ninguna entidad se borra físicamente. Usuarios, vehículos y companies tienen un campo `activo` (BOOLEAN). Las FKs usan `ON DELETE RESTRICT` para impedir borrados accidentales. Las ofertas se marcan como `expirada` en lugar de eliminarse.
-
-### 3.7. Auditoría automática con triggers
-
+### 3.7. Auditoria automatica con triggers
 Tres triggers `AFTER INSERT/UPDATE` sobre `viaje` y `oferta` registran cambios en la tabla `auditoria`. Se usa el operador NULL-safe `<=>` para comparar valores que pueden ser NULL.
 
-## 4. Índices
 
+## 4. Índices
 | Índice | Tabla | Columnas | Justificación |
 |--------|-------|----------|---------------|
 | `idx_viaje_estado` | viaje | (estado) | Filtro más frecuente en dashboards y operativa |
@@ -184,7 +179,6 @@ Tres triggers `AFTER INSERT/UPDATE` sobre `viaje` y `oferta` registran cambios e
 | `idx_audit_fecha` | auditoria | (fecha) | Auditoría por rango temporal |
 
 ## 5. Vistas
-
 | Vista | Propósito |
 |-------|-----------|
 | `v_viajes_detalle` | Desnormaliza viaje + rider + conductor + company + vehículo. Simplifica consultas del dashboard. |
@@ -193,26 +187,22 @@ Tres triggers `AFTER INSERT/UPDATE` sobre `viaje` y `oferta` registran cambios e
 | `v_metricas_company` | Agrega KPIs por company: conductores, viajes, ingresos, tasa de aceptación. |
 
 ## 6. Stored procedures
-
 | Procedure | Función | Mecanismo de concurrencia |
 |-----------|---------|---------------------------|
 | `sp_aceptar_oferta` | Acepta una oferta, asigna conductor al viaje, rechaza el resto de ofertas | `SELECT ... FOR UPDATE` sobre oferta y viaje |
 | `sp_iniciar_viaje` | Cambia estado a `en_curso`, marca conductor como no disponible | `FOR UPDATE` sobre viaje |
 | `sp_finalizar_viaje` | Calcula precio, finaliza viaje, crea pago, libera conductor | `FOR UPDATE` sobre viaje |
 
-## 7. Seguridad (resumen)
-
-4 roles con principio de mínimo privilegio:
-
+## 7. Seguridad
+Hay 4 roles con principio de minimo privilegio:
 - **rol_app**: SELECT/INSERT/UPDATE + EXECUTE (API backend).
 - **rol_analytics**: SELECT solo sobre vistas (reporting).
 - **rol_backup**: SELECT + RELOAD + LOCK TABLES (mysqldump).
 - **rol_dba**: ALL PRIVILEGES sobre ridehailing + PROCESS/RELOAD global.
 
-## 8. Backup (resumen)
-
+## 8. Backup
 - **RPO**: 1 hora (binlog continuo entre backups).
 - **RTO**: 4 horas (restore completo + replay binlog).
-- Backup completo diario con `mysqldump --single-transaction` a las 03:00.
+- Backup completo diario con `mysqldump --single-transaction` a las 03:00AM.
 - Binlog en formato ROW para PITR.
 - Retención: 7 días de backups + 7 días de binlogs.
