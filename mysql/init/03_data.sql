@@ -6,114 +6,105 @@
 
 USE ridehailing;
 
--- Desactivar FK checks durante la carga masiva para mayor velocidad
--- (buena práctica en cargas iniciales)
+-- desactivar fk para mayor velocidad en inserción masiva
 SET foreign_key_checks = 0;
 SET unique_checks      = 0;
 SET autocommit         = 0;
 
--- ============================================================
--- 1. COMPANIES
--- ============================================================
+
+-- COMPAÑIAS
 INSERT INTO company (nombre, cif, email) VALUES
-  ('RapidoDrive SL', 'B12345678', 'ops@rapidodrive.es'),
-  ('UrbanFleet SA',  'A87654321', 'ops@urbanfleet.es'),
-  ('EcoRide SL',     'B11223344', 'ops@ecoride.es'),
-  ('MegaCab SA',     'A55667788', 'ops@megacab.es'),
-  ('CityWheels SL',  'B99887766', 'ops@citywheels.es');
+  ('Nuber', 'J65932322', 'ops@nuber.es'),
+  ('Pabify',  'P65826483', 'ops@pabify.es'),
+  ('Wolt',     'A77854312', 'ops@wolt.es'),
+  ('Left',     'J98742699', 'ops@left.es'),
+  ('Free Later',  'G56743892', 'ops@freelater.es');
 
--- ============================================================
--- 2. USUARIOS
--- Insertar sin listar AUTO_INCREMENT (buena práctica: listar columnas)
--- ============================================================
-
+-- USUARIOS
 -- Riders
 INSERT INTO usuario (tipo, nombre, apellidos, email, telefono, dni) VALUES
-  ('rider', 'Ana',       'García López',    'ana.garcia@mail.es',    '600000001', '10000001A'),
-  ('rider', 'Luis',      'Martínez Ruiz',   'luis.martinez@mail.es', '600000002', '10000002B'),
-  ('rider', 'Sofía',     'Fernández Gil',   'sofia.f@mail.es',       '600000003', '10000003C'),
-  ('rider', 'Carlos',    'Sánchez Vega',    'carlos.s@mail.es',      '600000004', '10000004D'),
-  ('rider', 'Elena',     'Jiménez Castro',  'elena.j@mail.es',       '600000005', '10000005E'),
-  ('rider', 'Pablo',     'López Moreno',    'pablo.l@mail.es',       '600000006', '10000006F'),
-  ('rider', 'Lucía',     'Díaz Navarro',    'lucia.d@mail.es',       '600000007', '10000007G'),
-  ('rider', 'Miguel',    'Torres Blanco',   'miguel.t@mail.es',      '600000008', '10000008H'),
-  ('rider', 'Marta',     'Ramírez Cortés',  'marta.r@mail.es',       '600000009', '10000009I'),
-  ('rider', 'Javier',    'Morales Herrera', 'javier.m@mail.es',      '600000010', '10000010J'),
-  ('rider', 'Laura',     'Alonso Peña',     'laura.a@mail.es',       '600000011', '10000011K'),
-  ('rider', 'David',     'Romero Campos',   'david.r@mail.es',       '600000012', '10000012L'),
-  ('rider', 'Cristina',  'Vargas Mendoza',  'cristina.v@mail.es',    '600000013', '10000013M'),
-  ('rider', 'Sergio',    'Ríos Paredes',    'sergio.r@mail.es',      '600000014', '10000014N'),
-  ('rider', 'Patricia',  'Guerrero Salas',  'patricia.g@mail.es',    '600000015', '10000015O'),
-  ('rider', 'Alejandro', 'Fuentes Ibáñez',  'alejandro.f@mail.es',   '600000016', '10000016P'),
-  ('rider', 'Isabel',    'Castro Rubio',    'isabel.c@mail.es',       '600000017', '10000017Q'),
-  ('rider', 'Raúl',      'Ortega Serrano',  'raul.o@mail.es',         '600000018', '10000018R'),
-  ('rider', 'Nuria',     'Molina Arias',    'nuria.m@mail.es',        '600000019', '10000019S'),
-  ('rider', 'Alberto',   'Reyes Delgado',   'alberto.r@mail.es',      '600000020', '10000020T');
+  ('rider', 'María',      'Acevedo Bueno',             'maria.acevedo@mail.es',      '612345001', '12345678A'),
+  ('rider', 'Javier',     'Antón Ordoñez',             'javier.anton@mail.es',       '612345002', '23456789B'),
+  ('rider', 'Alejandro',  'Bernaldo de Quirós Gómez',  'alejandro.bernaldo@mail.es', '612345003', '34567890C'),
+  ('rider', 'Pablo',      'Cerdeira Crespo',           'pablo.cerdeira@mail.es',     '612345004', '45678901D'),
+  ('rider', 'Irene',      'de Rosario Montero',        'irene.rosario@mail.es',      '612345005', '56789012E'),
+  ('rider', 'María',      'Fernández del Pozo Romero', 'maria.fernandez@mail.es',    '612345006', '67890123F'),
+  ('rider', 'Javier',     'López Ranero',              'javier.lopez@mail.es',       '612345007', '78901234G'),
+  ('rider', 'Robert',     'Lucero Rodríguez',          'robert.lucero@mail.es',      '612345008', '89012345H'),
+  ('rider', 'Antonio',    'Martínez Miguel',           'antonio.martinez@mail.es',   '612345009', '90123456J'),
+  ('rider', 'Raúl',       'Muñoz Dobón',               'raul.munoz@mail.es',         '612345010', '11223344K'),
+  ('rider', 'Jaime',      'Ordovás Curbera',           'jaime.ordovas@mail.es',      '612345011', '22334455L'),
+  ('rider', 'Juan Diego', 'Panchón Vidal',             'juan.panchon@mail.es',       '612345012', '33445566M'),
+  ('rider', 'Ángela',     'Pérez López',               'angela.perez@mail.es',       '612345013', '44556677N'),
+  ('rider', 'Javier',     'Picazo Trigueros',          'javier.picazo@mail.es',      '612345014', '55667788P'),
+  ('rider', 'Fernando',   'Romero Martín',             'fernando.romero@mail.es',    '612345015', '66778899Q'),
+  ('rider', 'Daniel',     'Sama Clemente',             'daniel.sama@mail.es',        '612345016', '77889900R'),
+  ('rider', 'Alejandro',  'Teba Ruiz',                 'alejandro.teba@mail.es',     '612345017', '88990011S'),
+  ('rider', 'Juan',       'Valdivia Conde',            'juan.valdivia@mail.es',      '612345018', '99001122T'),
+  ('rider', 'Pablo',      'López Amengual',            'pablo.lopez@mail.es',        '616583339', '87397847H'),
+  ('rider', 'Álvaro',     'Castañeda Mora',            'alvaro.castañeda@mail.es',   '629849202', '85938903G');
 
--- Conductores (id_usuario 21..30)
+-- Conductores
 INSERT INTO usuario (tipo, nombre, apellidos, email, telefono, dni) VALUES
-  ('conductor', 'Tomás',   'Pérez Valero',   'tomas.p@driver.es',   '611000001', '20000001A'),
-  ('conductor', 'Rosa',    'Gutiérrez Lara', 'rosa.g@driver.es',    '611000002', '20000002B'),
-  ('conductor', 'Manuel',  'Herrera Vidal',  'manuel.h@driver.es',  '611000003', '20000003C'),
-  ('conductor', 'Beatriz', 'Molero Nieto',   'beatriz.m@driver.es', '611000004', '20000004D'),
-  ('conductor', 'Jorge',   'Soler Prats',    'jorge.s@driver.es',   '611000005', '20000005E'),
-  ('conductor', 'Adriana', 'Cano Esteve',    'adriana.c@driver.es', '611000006', '20000006F'),
-  ('conductor', 'Rubén',   'Pascual Mora',   'ruben.p@driver.es',   '611000007', '20000007G'),
-  ('conductor', 'Vanesa',  'Iglesias Bayo',  'vanesa.i@driver.es',  '611000008', '20000008H'),
-  ('conductor', 'Marcos',  'Bravo Lozano',   'marcos.b@driver.es',  '611000009', '20000009I'),
-  ('conductor', 'Carmen',  'Aguilera Font',  'carmen.a@driver.es',  '611000010', '20000010J');
+  ('conductor', 'Iván',    'Barcia Santos',          'ivan.barcia@driver.es',       '698498329', '51515434R'),
+  ('conductor', 'Susana',  'Bautista Blasco',        'susana.bautista@driver.es',   '692942330', '52525375F'),
+  ('conductor', 'Alberto', 'Celedon Fernandez',      'alberto.celedon@driver.es',   '618782939', '58748374F'),
+  ('conductor', 'Héctor',  'Molina García',          'hector.molina@driver.es',     '618739827', '32748995D'),
+  ('conductor', 'Olga',    'Peñalba Rodríguez',      'olga.penalba@driver.es',      '610983930', '46736487L'),
+  ('conductor', 'Gonzalo', 'de las Heras de Matías', 'gonzalo.heras@driver.es',     '621920930', '87967097G'),
+  ('conductor', 'Moisés',  'Martínez Muñoz',         'moises.martinez@driver.es',   '657634834', '37467438W'),
+  ('conductor', 'Rodrigo', 'Díaz Morón',             'rodrigo.diaz@driver.es',      '632389238', '87493908G'),
+  ('conductor', 'Roberto', 'Rodríguez Galán',        'roberto.rodriguez@driver.es', '634231422', '47374894T'),
+  ('conductor', 'Elam',    'Uceda Herrrero',         'elam.uceda@driver.es',        '679687607', '83989239J');
 
--- ============================================================
--- 3. CONDUCTORES (perfil extendido)
--- id_conductor = id_usuario (relación 1:1)
--- ============================================================
+
+
+-- CONDUCTORES COMPLETOS
 INSERT INTO conductor (id_conductor, id_company, licencia, fecha_alta, disponible, rating) VALUES
-  (21, 1, 'LIC-2020-0001', '2020-01-10', TRUE,  4.85),
-  (22, 1, 'LIC-2020-0002', '2020-02-15', TRUE,  4.70),
-  (23, 2, 'LIC-2019-0003', '2019-06-01', TRUE,  4.92),
-  (24, 2, 'LIC-2021-0004', '2021-03-20', FALSE, 4.60),
-  (25, 3, 'LIC-2020-0005', '2020-07-11', TRUE,  4.75),
-  (26, 3, 'LIC-2022-0006', '2022-01-05', TRUE,  4.88),
-  (27, 4, 'LIC-2018-0007', '2018-09-14', TRUE,  4.55),
-  (28, 4, 'LIC-2021-0008', '2021-11-30', TRUE,  4.95),
+  (21, 1, 'LIC-2025-0001', '2025-01-10', TRUE,  4.85),
+  (22, 1, 'LIC-2024-0002', '2024-02-15', TRUE,  4.70),
+  (23, 2, 'LIC-2022-0003', '2022-06-01', TRUE,  4.92),
+  (24, 2, 'LIC-2024-0004', '2024-03-20', FALSE, 4.60),
+  (25, 3, 'LIC-2023-0005', '2023-07-11', TRUE,  4.75),
+  (26, 3, 'LIC-2026-0006', '2026-01-05', TRUE,  4.88),
+  (27, 4, 'LIC-2023-0007', '2023-09-14', TRUE,  4.55),
+  (28, 4, 'LIC-2024-0008', '2024-11-30', TRUE,  4.95),
   (29, 5, 'LIC-2020-0009', '2020-04-22', FALSE, 4.40),
-  (30, 5, 'LIC-2023-0010', '2023-02-01', TRUE,  4.80);
+  (30, 5, 'LIC-2024-0010', '2024-02-01', TRUE,  4.80);
 
--- ============================================================
--- 4. VEHÍCULOS
--- ============================================================
+
+
+-- VEHICULOS
 INSERT INTO vehiculo (matricula, marca, modelo, anio, color) VALUES
-  ('1234-ABC', 'Toyota',     'Corolla',  2020, 'Blanco'),
-  ('5678-DEF', 'Volkswagen', 'Passat',   2021, 'Gris'),
-  ('9012-GHI', 'Seat',       'León',     2019, 'Negro'),
-  ('3456-JKL', 'BMW',        '3 Series', 2022, 'Azul'),
-  ('7890-MNO', 'Hyundai',    'Tucson',   2021, 'Rojo'),
-  ('2345-PQR', 'Ford',       'Kuga',     2020, 'Blanco'),
-  ('6789-STU', 'Kia',        'Sportage', 2023, 'Gris'),
-  ('0123-VWX', 'Renault',    'Megane',   2019, 'Plata'),
-  ('4567-YZA', 'Peugeot',    '508',      2022, 'Negro'),
-  ('8901-BCD', 'Audi',       'A4',       2021, 'Azul');
+  ('1234-ABC', 'Mercedes-Benz', 'Clase S',        2025, 'Negro'),
+  ('5678-DEF', 'BMW',           'Serie 7',        2024, 'Gris'),
+  ('9012-GHI', 'Audi',          'A8',             2022, 'Blanco'),
+  ('3456-JKL', 'Porsche',       'Panamera',       2024, 'Azul'),
+  ('7890-MNO', 'Range Rover',   'Sport',          2023, 'Negro'),
+  ('2345-PQR', 'Tesla',         'Model S',        2026, 'Blanco'),
+  ('6789-STU', 'Maserati',      'Ghibli',         2023, 'Gris'),
+  ('0123-VWX', 'Lexus',         'LS 500',         2021, 'Rojo'),
+  ('4567-YZA', 'Jaguar',        'XF',             2020, 'Azul'),
+  ('8901-BCD', 'Porsche',       'Cayenne',        2024, 'Negro');
 
--- ============================================================
--- 5. ASIGNACIÓN CONDUCTOR <-> VEHÍCULO
--- fecha_hasta NULL = asignación vigente
--- ============================================================
+
+
+-- ASIGNACION CONDUCTOR con VEHICULO
 INSERT INTO conductor_vehiculo (id_conductor, id_vehiculo, fecha_desde, fecha_hasta) VALUES
-  (21, 1,  '2020-01-10', NULL),
-  (22, 2,  '2020-02-15', NULL),
-  (23, 3,  '2019-06-01', NULL),
-  (24, 4,  '2021-03-20', NULL),
-  (25, 5,  '2020-07-11', NULL),
-  (26, 6,  '2022-01-05', NULL),
-  (27, 7,  '2018-09-14', NULL),
-  (28, 8,  '2021-11-30', NULL),
+  (21, 1,  '2025-01-10', NULL),
+  (22, 2,  '2024-02-15', NULL),
+  (23, 3,  '2022-06-01', NULL),
+  (24, 4,  '2024-03-20', NULL),
+  (25, 5,  '2023-07-11', NULL),
+  (26, 6,  '2026-01-05', NULL),
+  (27, 7,  '2023-09-14', NULL),
+  (28, 8,  '2024-11-30', NULL),
   (29, 9,  '2020-04-22', NULL),
-  (30, 10, '2023-02-01', NULL);
+  (30, 10, '2024-02-01', NULL);
 
--- ============================================================
--- 6. VIAJES: carga masiva con stored procedure
--- (Tema 5 — Stored procedures con WHILE y variables)
--- ============================================================
+
+
+-- VIAJES
 DELIMITER $$
 DROP PROCEDURE IF EXISTS sp_generar_viajes$$
 CREATE PROCEDURE sp_generar_viajes()
@@ -176,10 +167,10 @@ VALUES
   (5, 'cancelado',  40.4300, -3.6800, 'Chueca, Madrid',       40.4500, -3.7000, 'Tetuán, Madrid'),
   (6, 'cancelado',  40.4050, -3.6950, 'Salamanca, Madrid',    40.3850, -3.6750, 'Vallecas, Madrid');
 
--- ============================================================
--- 7. OFERTAS
--- ============================================================
--- Viajes solicitados: varias ofertas pendientes a distintos conductores
+
+
+
+-- OFERTAS
 INSERT INTO oferta (id_viaje, id_conductor, estado, enviada_at)
   SELECT id_viaje, 21 + MOD(id_viaje, 10), 'pendiente', NOW()
   FROM viaje WHERE estado = 'solicitado';
@@ -192,7 +183,8 @@ INSERT INTO oferta (id_viaje, id_conductor, estado, enviada_at)
   SELECT id_viaje, 21 + MOD(id_viaje + 2, 10), 'rechazada', NOW() - INTERVAL 30 SECOND
   FROM viaje WHERE estado = 'solicitado';
 
--- Viajes finalizados: oferta aceptada por el conductor asignado
+
+-- Viajes finalizados
 INSERT INTO oferta (id_viaje, id_conductor, estado, enviada_at, respondida_at)
 SELECT
   v.id_viaje,
@@ -204,7 +196,8 @@ FROM viaje v
 WHERE v.estado = 'finalizado' AND v.id_conductor IS NOT NULL
 LIMIT 60;
 
--- Ofertas rechazadas por otros conductores del mismo viaje
+
+-- Ofertas rechazadas
 INSERT INTO oferta (id_viaje, id_conductor, estado, enviada_at, respondida_at)
 SELECT
   v.id_viaje,
@@ -217,9 +210,10 @@ WHERE v.estado = 'finalizado'
   AND v.id_conductor != 21 + MOD(v.id_viaje + 3, 10)
 LIMIT 40;
 
--- ============================================================
--- 8. PAGOS (un pago por viaje finalizado)
--- ============================================================
+
+
+
+-- PAGOS
 INSERT INTO pago (id_viaje, id_rider, id_conductor, importe_euros, metodo, estado, procesado_at)
 SELECT
   v.id_viaje,
@@ -232,6 +226,8 @@ SELECT
 FROM viaje v
 WHERE v.estado = 'finalizado' AND v.id_conductor IS NOT NULL;
 
+
+-- volver a activar todo
 COMMIT;
 SET foreign_key_checks = 1;
 SET unique_checks       = 1;

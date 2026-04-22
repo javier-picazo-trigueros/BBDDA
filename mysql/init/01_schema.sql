@@ -4,21 +4,17 @@
 -- Grupo: 3A
 -- ============================================================
 
--- 1. Crear la base de datos (Tema 1 y Tema 4)
+-- Crear la base de datos
 CREATE DATABASE IF NOT EXISTS ridehailing
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_0900_ai_ci;
 
 USE ridehailing;
 
--- ------------------------------------------------------------
--- 2. Tablas maestras
--- Convenciones: snake_case, singular, PK id_tabla BIGINT AUTO_INCREMENT
--- campos de auditoría created_at / updated_at en todas las tablas
--- (Tema 4 — Diseño de tablas: principios y convenciones)
--- ------------------------------------------------------------
 
--- 2.1. Compañías de conductores (tabla padre de conductor)
+-- Crear tablas principales
+
+-- COMPAÑIAS (padre de conductor)
 CREATE TABLE company (
   id_company  BIGINT       NOT NULL AUTO_INCREMENT,
   nombre      VARCHAR(120) NOT NULL,
@@ -33,8 +29,8 @@ CREATE TABLE company (
   UNIQUE KEY uk_company_email (email)
 ) ENGINE=InnoDB;
 
--- 2.2. Usuarios: riders y conductores comparten tabla base
--- El campo tipo distingue ambos roles (patrón tabla única)
+
+-- USUARIO (riders y conductores)
 CREATE TABLE usuario (
   id_usuario  BIGINT       NOT NULL AUTO_INCREMENT,
   tipo        ENUM('rider','conductor') NOT NULL,
@@ -52,8 +48,8 @@ CREATE TABLE usuario (
   UNIQUE KEY uk_usuario_dni   (dni)
 ) ENGINE=InnoDB;
 
--- 2.3. Conductor: extiende usuario con datos propios (relación 1:1)
--- id_conductor es FK a usuario → todo conductor es antes un usuario
+
+-- CONDUCTOR (1:1 con usuario)
 CREATE TABLE conductor (
   id_conductor  BIGINT       NOT NULL,
   id_company    BIGINT       NOT NULL,
@@ -75,7 +71,8 @@ CREATE TABLE conductor (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- 2.4. Vehículos
+
+-- VEHICULOS
 CREATE TABLE vehiculo (
   id_vehiculo  BIGINT      NOT NULL AUTO_INCREMENT,
   matricula    VARCHAR(16) NOT NULL,
@@ -91,9 +88,8 @@ CREATE TABLE vehiculo (
   UNIQUE KEY uk_vehiculo_matricula (matricula)
 ) ENGINE=InnoDB;
 
--- 2.5. Asignación conductor <-> vehículo: relación N:N con vigencia temporal
--- (Tema 4 — Relación N:N con tabla intermedia)
--- fecha_hasta NULL = asignación vigente
+
+-- ASIGNACION CONDUCTOR CON VEHICULO (tabla intermedia de relacion N:N entre estos dos)
 CREATE TABLE conductor_vehiculo (
   id_conductor  BIGINT  NOT NULL,
   id_vehiculo   BIGINT  NOT NULL,
@@ -108,13 +104,11 @@ CREATE TABLE conductor_vehiculo (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ------------------------------------------------------------
--- 3. Tablas transaccionales
--- ------------------------------------------------------------
 
--- 3.1. Viaje: entidad central del sistema
--- Almacena el ciclo de vida completo con timestamps por estado
--- id_conductor NULL hasta que alguien acepta la oferta
+
+-- Tablas transaccionales
+
+-- VIAJE (centro del sistema)
 CREATE TABLE viaje (
   id_viaje           BIGINT        NOT NULL AUTO_INCREMENT,
   id_rider           BIGINT        NOT NULL,
@@ -156,9 +150,9 @@ CREATE TABLE viaje (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- 3.2. Oferta: cada conductor recibe una oferta por viaje
--- UNIQUE (id_viaje, id_conductor) evita duplicados
--- El SP sp_aceptar_oferta usa FOR UPDATE para evitar doble aceptación
+
+
+-- OFERTA
 CREATE TABLE oferta (
   id_oferta      BIGINT   NOT NULL AUTO_INCREMENT,
   id_viaje       BIGINT   NOT NULL,
@@ -177,7 +171,8 @@ CREATE TABLE oferta (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- 3.3. Pago: un viaje genera exactamente un pago (UNIQUE id_viaje)
+
+-- PAGOS (un pago en cada viaje)
 CREATE TABLE pago (
   id_pago        BIGINT        NOT NULL AUTO_INCREMENT,
   id_viaje       BIGINT        NOT NULL,
@@ -203,10 +198,8 @@ CREATE TABLE pago (
     ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- ------------------------------------------------------------
--- 4. Tabla de auditoría
--- (Tema 5 — Triggers: auditoría automática)
--- ------------------------------------------------------------
+
+-- AUDITORIA (para triggers de auditoria)
 CREATE TABLE auditoria (
   id_auditoria  BIGINT       NOT NULL AUTO_INCREMENT,
   tabla         VARCHAR(60)  NOT NULL,
@@ -222,11 +215,9 @@ CREATE TABLE auditoria (
   INDEX idx_audit_fecha    (fecha)
 ) ENGINE=InnoDB;
 
--- ------------------------------------------------------------
--- 5. Índices de rendimiento
--- (Tema 4 — Índices, y Tema 7 — Rendimiento)
--- Regla: columnas frecuentes en WHERE, JOIN y ORDER BY
--- ------------------------------------------------------------
+
+
+-- Indices
 
 -- Viajes: los filtros más habituales en producción
 CREATE INDEX idx_viaje_estado        ON viaje(estado);
@@ -250,12 +241,11 @@ CREATE INDEX idx_conductor_disponible ON conductor(disponible);
 CREATE INDEX idx_pago_conductor      ON pago(id_conductor, estado);
 CREATE INDEX idx_pago_rider          ON pago(id_rider);
 
--- ------------------------------------------------------------
--- 6. Vistas
--- (Tema 4 — Vistas: abstracción y seguridad)
--- ------------------------------------------------------------
 
--- Vista de viajes con toda la info desnormalizada (simplifica consultas)
+
+-- Vistas
+
+-- Vista de viajes
 CREATE VIEW v_viajes_detalle AS
 SELECT
   v.id_viaje,
@@ -285,8 +275,8 @@ LEFT JOIN usuario   u  ON u.id_usuario   = v.id_conductor
 LEFT JOIN company   co ON co.id_company  = c.id_company
 LEFT JOIN vehiculo  ve ON ve.id_vehiculo = v.id_vehiculo;
 
--- Vista pública del conductor: sin datos sensibles (dni, email)
--- Patrón de seguridad: ocultar columnas sensibles (Tema 3 y Tema 4)
+
+-- Vistas conductor (publicas para clientes)
 CREATE VIEW v_conductor_publico AS
 SELECT
   c.id_conductor,
@@ -299,7 +289,8 @@ JOIN usuario u  ON u.id_usuario  = c.id_conductor
 JOIN company co ON co.id_company = c.id_company
 WHERE u.activo = TRUE;
 
--- Vista de métricas por conductor (para el dashboard de negocio)
+
+-- Vista de metricas de conductores
 CREATE VIEW v_metricas_conductor AS
 SELECT
   c.id_conductor,
@@ -326,7 +317,8 @@ LEFT JOIN viaje  v ON v.id_conductor = c.id_conductor
 LEFT JOIN oferta o ON o.id_conductor = c.id_conductor
 GROUP BY c.id_conductor, conductor_nombre, company;
 
--- Vista de métricas por company
+
+-- Vista de metricas de compañias
 CREATE VIEW v_metricas_company AS
 SELECT
   co.id_company,
@@ -346,12 +338,9 @@ LEFT JOIN viaje     v ON v.id_conductor = c.id_conductor
 LEFT JOIN oferta    o ON o.id_conductor = c.id_conductor
 GROUP BY co.id_company, co.nombre;
 
--- ------------------------------------------------------------
--- 7. Triggers de auditoría
--- (Tema 5 — Triggers: auditoría automática con AFTER UPDATE)
--- Se usa el operador NULL-safe <=> para comparar valores que
--- pueden ser NULL sin lanzar error
--- ------------------------------------------------------------
+
+
+-- Triggers de auditoria
 DELIMITER $$
 
 -- Auditar cambios de estado en viaje
@@ -366,7 +355,9 @@ BEGIN
   END IF;
 END$$
 
--- Auditar nuevas ofertas
+
+
+-- Nuevas ofertas
 DROP TRIGGER IF EXISTS trg_oferta_audit_insert$$
 CREATE TRIGGER trg_oferta_audit_insert
 AFTER INSERT ON oferta
@@ -376,7 +367,9 @@ BEGIN
   VALUES ('oferta', 'INSERT', NEW.id_oferta, 'estado', NEW.estado, USER());
 END$$
 
--- Auditar cambios de estado de oferta
+
+
+-- Cambios de estado de oferta
 DROP TRIGGER IF EXISTS trg_oferta_audit_update$$
 CREATE TRIGGER trg_oferta_audit_update
 AFTER UPDATE ON oferta
