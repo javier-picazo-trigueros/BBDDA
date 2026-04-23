@@ -12,9 +12,9 @@ CREATE DATABASE IF NOT EXISTS ridehailing
 USE ridehailing;
 
 
--- Crear tablas principales
+-- Tablas maestras
 
--- COMPAÑIAS (padre de conductor)
+-- COMPAÑIAS
 CREATE TABLE company (
   id_company  BIGINT       NOT NULL AUTO_INCREMENT,
   nombre      VARCHAR(120) NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE company (
 ) ENGINE=InnoDB;
 
 
--- USUARIO (riders y conductores)
+-- USUARIOS
 CREATE TABLE usuario (
   id_usuario  BIGINT       NOT NULL AUTO_INCREMENT,
   tipo        ENUM('rider','conductor') NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE usuario (
 ) ENGINE=InnoDB;
 
 
--- CONDUCTOR (1:1 con usuario)
+-- CONDUCTORES
 CREATE TABLE conductor (
   id_conductor  BIGINT       NOT NULL,
   id_company    BIGINT       NOT NULL,
@@ -62,7 +62,6 @@ CREATE TABLE conductor (
                              ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id_conductor),
   UNIQUE KEY uk_conductor_licencia (licencia),
-  -- FK: ON UPDATE CASCADE, ON DELETE RESTRICT (Tema 4 — acciones referenciales)
   CONSTRAINT fk_conductor_usuario
     FOREIGN KEY (id_conductor) REFERENCES usuario(id_usuario)
     ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -89,7 +88,7 @@ CREATE TABLE vehiculo (
 ) ENGINE=InnoDB;
 
 
--- ASIGNACION CONDUCTOR CON VEHICULO (tabla intermedia de relacion N:N entre estos dos)
+-- ASIGNACION CONDUCTOR CON VEHICULO
 CREATE TABLE conductor_vehiculo (
   id_conductor  BIGINT  NOT NULL,
   id_vehiculo   BIGINT  NOT NULL,
@@ -108,7 +107,7 @@ CREATE TABLE conductor_vehiculo (
 
 -- Tablas transaccionales
 
--- VIAJE (centro del sistema)
+-- VIAJES
 CREATE TABLE viaje (
   id_viaje           BIGINT        NOT NULL AUTO_INCREMENT,
   id_rider           BIGINT        NOT NULL,
@@ -117,18 +116,15 @@ CREATE TABLE viaje (
   estado             ENUM('solicitado','aceptado','en_curso',
                           'finalizado','cancelado')
                                    NOT NULL DEFAULT 'solicitado',
-  -- Geolocalización origen/destino
   origen_lat         DECIMAL(10,7) NOT NULL,
   origen_lng         DECIMAL(10,7) NOT NULL,
   origen_desc        VARCHAR(200)  NOT NULL,
   destino_lat        DECIMAL(10,7) NOT NULL,
   destino_lng        DECIMAL(10,7) NOT NULL,
   destino_desc       VARCHAR(200)  NOT NULL,
-  -- Métricas: se rellenan al finalizar
   distancia_km       DECIMAL(8,3)  NULL,
   duracion_min       DECIMAL(8,2)  NULL,
   precio_euros       DECIMAL(10,2) NULL,
-  -- Timestamps del ciclo de vida
   solicitado_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   aceptado_at        DATETIME      NULL,
   inicio_at          DATETIME      NULL,
@@ -152,7 +148,7 @@ CREATE TABLE viaje (
 
 
 
--- OFERTA
+-- OFERTAS
 CREATE TABLE oferta (
   id_oferta      BIGINT   NOT NULL AUTO_INCREMENT,
   id_viaje       BIGINT   NOT NULL,
@@ -172,7 +168,7 @@ CREATE TABLE oferta (
 ) ENGINE=InnoDB;
 
 
--- PAGOS (un pago en cada viaje)
+-- PAGOS
 CREATE TABLE pago (
   id_pago        BIGINT        NOT NULL AUTO_INCREMENT,
   id_viaje       BIGINT        NOT NULL,
@@ -199,7 +195,7 @@ CREATE TABLE pago (
 ) ENGINE=InnoDB;
 
 
--- AUDITORIA (para triggers de auditoria)
+-- AUDITORIA
 CREATE TABLE auditoria (
   id_auditoria  BIGINT       NOT NULL AUTO_INCREMENT,
   tabla         VARCHAR(60)  NOT NULL,
@@ -219,12 +215,12 @@ CREATE TABLE auditoria (
 
 -- Indices
 
--- Viajes: los filtros más habituales en producción
+-- Viajes
 CREATE INDEX idx_viaje_estado        ON viaje(estado);
 CREATE INDEX idx_viaje_rider         ON viaje(id_rider);
 CREATE INDEX idx_viaje_conductor     ON viaje(id_conductor);
 CREATE INDEX idx_viaje_solicitado_at ON viaje(solicitado_at);
--- Índice compuesto: el orden importa (estado primero, luego fecha)
+-- Indice compuesto de estado y fecha
 CREATE INDEX idx_viaje_estado_fecha  ON viaje(estado, solicitado_at);
 
 -- Ofertas
@@ -276,7 +272,7 @@ LEFT JOIN company   co ON co.id_company  = c.id_company
 LEFT JOIN vehiculo  ve ON ve.id_vehiculo = v.id_vehiculo;
 
 
--- Vistas conductor (publicas para clientes)
+-- Vista de conductores
 CREATE VIEW v_conductor_publico AS
 SELECT
   c.id_conductor,
@@ -318,7 +314,7 @@ LEFT JOIN oferta o ON o.id_conductor = c.id_conductor
 GROUP BY c.id_conductor, conductor_nombre, company;
 
 
--- Vista de metricas de compañias
+-- Vista de metricas de companias
 CREATE VIEW v_metricas_company AS
 SELECT
   co.id_company,
@@ -343,7 +339,7 @@ GROUP BY co.id_company, co.nombre;
 -- Triggers de auditoria
 DELIMITER $$
 
--- Auditar cambios de estado en viaje
+-- Auditoria de cambios de estado en viaje
 DROP TRIGGER IF EXISTS trg_viaje_audit_update$$
 CREATE TRIGGER trg_viaje_audit_update
 AFTER UPDATE ON viaje
@@ -357,7 +353,7 @@ END$$
 
 
 
--- Nuevas ofertas
+-- Auditoria de nuevas ofertas
 DROP TRIGGER IF EXISTS trg_oferta_audit_insert$$
 CREATE TRIGGER trg_oferta_audit_insert
 AFTER INSERT ON oferta
@@ -369,7 +365,7 @@ END$$
 
 
 
--- Cambios de estado de oferta
+-- Auditoria de cambios de estado en oferta
 DROP TRIGGER IF EXISTS trg_oferta_audit_update$$
 CREATE TRIGGER trg_oferta_audit_update
 AFTER UPDATE ON oferta

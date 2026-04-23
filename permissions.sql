@@ -14,37 +14,37 @@ CREATE ROLE IF NOT EXISTS 'rol_dba';       -- Administracion
 
 
 -- Permisos por rol
--- rol_app: Solo lectura global y ejecucion de procedures
+-- rol_app: lectura global y ejecucion de procedures
 GRANT SELECT ON ridehailing.* TO 'rol_app';
 GRANT EXECUTE ON ridehailing.* TO 'rol_app';
--- Dar permiso de escritura SOLO en tablas operativas no controladas por SPs
+-- Escritura acotada a tablas operativas
 GRANT INSERT, UPDATE ON ridehailing.usuario TO 'rol_app';
 GRANT INSERT, UPDATE ON ridehailing.conductor TO 'rol_app';
 GRANT INSERT, UPDATE ON ridehailing.vehiculo TO 'rol_app';
 GRANT INSERT, UPDATE ON ridehailing.conductor_vehiculo TO 'rol_app';
 
--- rol_analytics: solo lectura, y solo a traves de vistas (sin tablas directas)
--- Patron de seguridad: exponer vistas en lugar de tablas (Tema 3 y Tema 4)
+-- rol_analytics: lectura a traves de vistas
+-- Exponer unicamente vistas de reporting
 GRANT SELECT ON ridehailing.v_viajes_detalle     TO 'rol_analytics';
 GRANT SELECT ON ridehailing.v_conductor_publico  TO 'rol_analytics';
 GRANT SELECT ON ridehailing.v_metricas_conductor TO 'rol_analytics';
 GRANT SELECT ON ridehailing.v_metricas_company   TO 'rol_analytics';
 
--- rol_backup: Permisos ajustados al minimo para mysqldump
+-- rol_backup: privilegios necesarios para backup
 GRANT SELECT, LOCK TABLES, SHOW VIEW, EVENT, TRIGGER ON ridehailing.* TO 'rol_backup';
 GRANT RELOAD, REPLICATION CLIENT ON *.* TO 'rol_backup';
 
--- rol_dba: administracion completa de ridehailing (no privilegios globales)
+-- rol_dba: administracion completa sobre ridehailing
 GRANT ALL PRIVILEGES ON ridehailing.* TO 'rol_dba';
 GRANT PROCESS, RELOAD, REPLICATION CLIENT ON *.* TO 'rol_dba';
 
 
 
 -- Usuarios
--- Formato: 'usuario'@'host' - el host restringe el origen
+-- El host restringe el origen de conexion
 
--- api_app: usuario de la aplicacion backend
--- '%' porque se conecta desde dentro de la red Docker
+-- api_app: acceso de la aplicacion
+-- Acceso desde la red del servicio
 CREATE USER IF NOT EXISTS 'api_app'@'%'
   IDENTIFIED WITH caching_sha2_password BY 'ApiApp_S3cur3!';
 GRANT 'rol_app' TO 'api_app'@'%';
@@ -56,13 +56,13 @@ CREATE USER IF NOT EXISTS 'bi_reports'@'%'
 GRANT 'rol_analytics' TO 'bi_reports'@'%';
 SET DEFAULT ROLE 'rol_analytics' TO 'bi_reports'@'%';
 
--- backup_user: solo desde localhost (el backup se ejecuta en el mismo servidor)
+-- backup_user: acceso local para procesos de backup
 CREATE USER IF NOT EXISTS 'backup_user'@'localhost'
   IDENTIFIED WITH caching_sha2_password BY 'Backup_Str0ng!';
 GRANT 'rol_backup' TO 'backup_user'@'localhost';
 SET DEFAULT ROLE 'rol_backup' TO 'backup_user'@'localhost';
 
--- dba_admin: solo desde localhost, nunca exponer root directamente
+-- dba_admin: acceso administrativo local
 CREATE USER IF NOT EXISTS 'dba_admin'@'localhost'
   IDENTIFIED WITH caching_sha2_password BY 'Dba_Adm1n_S3cur3!';
 GRANT 'rol_dba' TO 'dba_admin'@'localhost';

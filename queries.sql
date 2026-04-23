@@ -1,6 +1,6 @@
 -- ============================================================
 -- Practica Ride Hailing - BBDD Avanazadas
--- Consultas operativas y pruebas
+-- Consultas operativas
 -- ============================================================
 
 USE ridehailing;
@@ -56,7 +56,7 @@ WHERE estado = 'pendiente'
   AND enviada_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE);
 
 
--- SECCION 2: PRUEBAS DE TRANSACCIONES Y LOCKS
+-- SECCION 2: OPERACIONES TRANSACCIONALES
 -- Estas llamadas asumen una base recien cargada con data.sql.
 
 CALL sp_aceptar_oferta(1, 22, @resultado);

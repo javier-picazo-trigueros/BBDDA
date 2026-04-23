@@ -362,32 +362,32 @@ proc_label: BEGIN
 
   START TRANSACTION;
 
-  -- 1. AVERIGUAR EL VIAJE (sin bloquear aun)
+  -- Obtener el viaje asociado a la oferta
   SELECT id_viaje INTO v_id_viaje FROM oferta WHERE id_oferta = p_id_oferta;
 
   IF v_id_viaje IS NULL THEN
     ROLLBACK; SET p_resultado = 'ERROR: Oferta no encontrada'; LEAVE proc_label;
   END IF;
 
-  -- 2. BLOQUEO MAESTRO: Bloquear el viaje PRIMERO (evita deadlocks cruzados)
+  -- Bloquear el viaje antes de actualizar sus ofertas
   SELECT estado INTO v_estado_viaje FROM viaje WHERE id_viaje = v_id_viaje FOR UPDATE;
 
   IF v_estado_viaje != 'solicitado' THEN
     ROLLBACK; SET p_resultado = 'ERROR: El viaje ya fue aceptado por otro conductor'; LEAVE proc_label;
   END IF;
 
-  -- 3. BLOQUEO SECUNDARIO: Bloquear la oferta
+  -- Bloquear la oferta del conductor
   SELECT estado INTO v_estado_oferta FROM oferta
   WHERE id_oferta = p_id_oferta AND id_conductor = p_id_conductor FOR UPDATE;
 
-  -- PARCHE 1: Controlar el NULL explicitamente para evitar secuestros de ofertas
+  -- Validar que la oferta pertenezca al conductor y siga pendiente
   IF v_estado_oferta IS NULL OR v_estado_oferta != 'pendiente' THEN
     ROLLBACK;
     SET p_resultado = 'ERROR: La oferta no pertenece al conductor o no está pendiente';
     LEAVE proc_label;
   END IF;
 
-  -- Validar vehiculo vigente
+  -- Obtener el vehiculo vigente del conductor
   SELECT id_vehiculo INTO v_id_vehiculo FROM conductor_vehiculo
   WHERE id_conductor = p_id_conductor AND fecha_hasta IS NULL LIMIT 1;
 
@@ -395,7 +395,7 @@ proc_label: BEGIN
     ROLLBACK; SET p_resultado = 'ERROR: El conductor no tiene vehículo asignado'; LEAVE proc_label;
   END IF;
 
-  -- PARCHE 2: Acotar el UPDATE asegurando el id_conductor
+  -- Confirmar la aceptacion solo sobre la oferta del conductor
   UPDATE oferta
   SET estado = 'aceptada', respondida_at = NOW()
   WHERE id_oferta = p_id_oferta AND id_conductor = p_id_conductor;

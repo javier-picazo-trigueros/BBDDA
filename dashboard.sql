@@ -32,7 +32,7 @@ SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Max_used_connections')    AS pico_historico;
 
--- DB-3. Buffer pool hit ratio: debe ser > 99%
+-- DB-3. Buffer pool hit ratio
 SELECT
   ROUND(
     (1 - (
@@ -57,7 +57,7 @@ SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Com_delete')    AS deletes;
 
--- DB-5. Deadlocks y esperas por locks de fila
+-- DB-5. Contencion y esperas por locks de fila
 SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Innodb_deadlocks')         AS deadlocks,
@@ -89,7 +89,7 @@ WHERE SCHEMA_NAME = 'ridehailing'
 ORDER BY avg_ms DESC
 LIMIT 10;
 
--- DB-8. Índices no usados (candidatos a eliminar)
+-- DB-8. Índices no usados
 SELECT OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME
 FROM sys.schema_unused_indexes
 WHERE OBJECT_SCHEMA = 'ridehailing';
@@ -159,7 +159,7 @@ GROUP BY v.id_conductor, conductor, company
 ORDER BY ingresos_eur DESC
 LIMIT 5;
 
--- BIZ-5. Métricas por company (usando vista)
+-- BIZ-5. Métricas por company
 SELECT * FROM v_metricas_company ORDER BY ingresos_totales DESC;
 
 -- BIZ-6. Tiempo medio de espera del rider (solicitud → inicio del viaje)
@@ -199,6 +199,6 @@ GROUP BY v.id_rider, rider
 ORDER BY total_viajes DESC
 LIMIT 10;
 
--- BIZ-9. EXPLAIN: demostración de uso de índices
+-- BIZ-9. Planes de ejecucion sobre consultas indexadas
 EXPLAIN SELECT * FROM viaje WHERE estado = 'finalizado';
 EXPLAIN SELECT * FROM viaje WHERE estado = 'finalizado' AND solicitado_at >= '2025-01-01';

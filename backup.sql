@@ -5,18 +5,18 @@
 -- ============================================================
 
 
--- verificar configuracion binlog
+-- Verificar configuracion de binlog
 SHOW VARIABLES LIKE 'log_bin';
 SHOW VARIABLES LIKE 'binlog_format';
 SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';
 SHOW BINARY LOGS;
 
 
--- verificar integridad post-restore
+-- Verificar integridad tras la restauracion
 USE ridehailing;
 
 
--- conteo de filas por tabla
+-- Conteo de filas por tabla
 SELECT 'company'    AS tabla, COUNT(*) AS filas FROM company
 UNION ALL
 SELECT 'usuario',   COUNT(*) FROM usuario
@@ -34,7 +34,7 @@ UNION ALL
 SELECT 'auditoria', COUNT(*) FROM auditoria;
 
 
--- verificar integridad referencial
+-- Verificar integridad referencial
 SELECT 'FK viaje→rider rota' AS problema, COUNT(*) AS n
 FROM viaje v
 LEFT JOIN usuario u ON u.id_usuario = v.id_rider
@@ -59,7 +59,7 @@ LEFT JOIN viaje v ON v.id_viaje = p.id_viaje
 WHERE v.id_viaje IS NULL;
 
 
--- verificar FK en information_schema
+-- Verificar claves foraneas registradas
 SELECT TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME
 FROM information_schema.KEY_COLUMN_USAGE
 WHERE TABLE_SCHEMA       = 'ridehailing'
@@ -69,9 +69,9 @@ WHERE TABLE_SCHEMA       = 'ridehailing'
 
 
 
--- comandos de backup y restore:
+-- Comandos de backup y restore
 
--- BACKUP COMPLETO (ejecutar desde el host, no dentro de MySQL):
+-- Backup completo (ejecutar desde el host):
 --
 --   docker exec ridehailing-db mysqldump \
 --     -uroot -prootpass \
@@ -81,28 +81,22 @@ WHERE TABLE_SCHEMA       = 'ridehailing'
 --     --set-gtid-purged=OFF \
 --     | gzip > backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
 --
--- --single-transaction: snapshot consistente sin bloquear (InnoDB)
--- --routines:           incluye stored procedures
--- --triggers:           incluye triggers
--- --set-gtid-purged=OFF: no incluir info GTID (no usamos replicación)
-
--- RESTORE:
+-- Restore:
 --
 --   zcat backups/backup_YYYYMMDD.sql.gz | \
 --     docker exec -i ridehailing-db mysql -uroot -prootpass
 
--- PITR — recuperar hasta un punto en el tiempo:
--- (Tema 6 — Point-in-Time Recovery con mysqlbinlog)
+-- Recuperacion hasta un punto en el tiempo:
 --
--- Paso 1: restaurar el backup completo más reciente (ver RESTORE arriba)
+-- Paso 1: restaurar el backup completo mas reciente
 --
--- Paso 2: localizar el evento problemático en el binlog
+-- Paso 2: localizar el evento problematico en el binlog
 --   docker exec ridehailing-db mysqlbinlog \
 --     --start-datetime="YYYY-MM-DD HH:MM:00" \
 --     --stop-datetime="YYYY-MM-DD HH:MM:59" \
 --     /var/lib/mysql/mysql-bin.000001 | grep -B5 -A5 "DELETE\|DROP"
 --
--- Paso 3: aplicar binlog hasta el momento justo antes del error
+-- Paso 3: aplicar binlog hasta el momento previo al error
 --   docker exec ridehailing-db mysqlbinlog \
 --     --start-datetime="YYYY-MM-DD 03:00:00" \
 --     --stop-datetime="YYYY-MM-DD HH:MM:SS" \

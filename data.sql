@@ -6,7 +6,7 @@
 
 USE ridehailing;
 
--- desactivar fk para mayor velocidad en inserción masiva
+-- Desactivar validaciones para la carga inicial
 SET foreign_key_checks = 0;
 SET unique_checks      = 0;
 SET autocommit         = 0;
@@ -124,7 +124,6 @@ BEGIN
     SET v_vehiculo  = 1  + MOD(i - 1, 10);
     SET v_dist      = ROUND(2 + (RAND() * 28), 2);
     SET v_dur       = ROUND(v_dist * (3 + RAND() * 2), 2);
-    -- Tarifa: 2.50 base + 1.20/km + 0.15/min
     SET v_precio    = ROUND(2.50 + v_dist * 1.20 + v_dur * 0.15, 2);
     SET v_fecha     = DATE_SUB(NOW(), INTERVAL FLOOR(RAND() * 90) DAY);
 
@@ -155,7 +154,7 @@ DELIMITER ;
 CALL sp_generar_viajes();
 DROP PROCEDURE IF EXISTS sp_generar_viajes;
 
--- Viajes en distintos estados para poder probar el ciclo de vida
+-- Viajes de ejemplo en distintos estados
 INSERT INTO viaje (id_rider, estado,
   origen_lat,  origen_lng,  origen_desc,
   destino_lat, destino_lng, destino_desc)
@@ -227,7 +226,7 @@ FROM viaje v
 WHERE v.estado = 'finalizado' AND v.id_conductor IS NOT NULL;
 
 
--- volver a activar todo
+-- Restaurar validaciones
 COMMIT;
 SET foreign_key_checks = 1;
 SET unique_checks       = 1;
