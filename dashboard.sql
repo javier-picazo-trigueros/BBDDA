@@ -147,8 +147,8 @@ SELECT
   co.nombre                                                             AS company,
   COUNT(v.id_viaje)                                                     AS viajes,
   ROUND(SUM(v.precio_euros), 2)                                         AS ingresos_eur,
-  ROUND(AVG(v.precio_euros / NULLIF(v.distancia_km, 0)), 2)             AS eur_por_km,
-  ROUND(AVG(v.precio_euros / NULLIF(v.duracion_min,  0)), 2)            AS eur_por_min
+  ROUND(SUM(v.precio_euros) / NULLIF(SUM(v.distancia_km), 0), 2)        AS eur_por_km,
+  ROUND(SUM(v.precio_euros) / NULLIF(SUM(v.duracion_min), 0), 2)        AS eur_por_min
 FROM viaje v
 JOIN conductor c ON c.id_conductor = v.id_conductor
 JOIN usuario   u ON u.id_usuario   = v.id_conductor

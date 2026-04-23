@@ -1,27 +1,38 @@
 services:
-
-  # ── MySQL 8.0 ─────────────────────────────────────────────
   mysql:
-    image: mysql:8.0
-    container_name: mysql8
+    image: mysql:8.0.40
+    container_name: ridehailing-db
     restart: unless-stopped
     ports:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_DATABASE: ridehailing
-      MYSQL_USER: api_app
-      MYSQL_PASSWORD: ApiApp_S3cur3!
     volumes:
       - mysql_data:/var/lib/mysql
       - ./mysql/conf.d:/etc/mysql/conf.d:ro
-      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+      - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./permissions.sql:/docker-entrypoint-initdb.d/02_permissions.sql:ro
+      - ./data.sql:/docker-entrypoint-initdb.d/03_data.sql:ro
       - ./backups:/backups
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpass"]
       interval: 10s
       timeout: 5s
       retries: 10
+
+  adminer:
+    image: adminer:latest
+    container_name: ridehailing-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+      ADMINER_DESIGN: 'lucas-sandbery'
+    depends_on:
+      mysql:
+        condition: service_healthy
 
 volumes:
   mysql_data:

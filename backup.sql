@@ -73,7 +73,7 @@ WHERE TABLE_SCHEMA       = 'ridehailing'
 
 -- BACKUP COMPLETO (ejecutar desde el host, no dentro de MySQL):
 --
---   docker exec mysql8 mysqldump \
+--   docker exec ridehailing-db mysqldump \
 --     -uroot -prootpass \
 --     --databases ridehailing \
 --     --single-transaction \
@@ -89,7 +89,7 @@ WHERE TABLE_SCHEMA       = 'ridehailing'
 -- RESTORE:
 --
 --   zcat backups/backup_YYYYMMDD.sql.gz | \
---     docker exec -i mysql8 mysql -uroot -prootpass
+--     docker exec -i ridehailing-db mysql -uroot -prootpass
 
 -- PITR — recuperar hasta un punto en el tiempo:
 -- (Tema 6 — Point-in-Time Recovery con mysqlbinlog)
@@ -97,14 +97,14 @@ WHERE TABLE_SCHEMA       = 'ridehailing'
 -- Paso 1: restaurar el backup completo más reciente (ver RESTORE arriba)
 --
 -- Paso 2: localizar el evento problemático en el binlog
---   docker exec mysql8 mysqlbinlog \
+--   docker exec ridehailing-db mysqlbinlog \
 --     --start-datetime="YYYY-MM-DD HH:MM:00" \
 --     --stop-datetime="YYYY-MM-DD HH:MM:59" \
 --     /var/lib/mysql/mysql-bin.000001 | grep -B5 -A5 "DELETE\|DROP"
 --
 -- Paso 3: aplicar binlog hasta el momento justo antes del error
---   docker exec mysql8 mysqlbinlog \
+--   docker exec ridehailing-db mysqlbinlog \
 --     --start-datetime="YYYY-MM-DD 03:00:00" \
 --     --stop-datetime="YYYY-MM-DD HH:MM:SS" \
 --     /var/lib/mysql/mysql-bin.000001 | \
---     docker exec -i mysql8 mysql -uroot -prootpass
+--     docker exec -i ridehailing-db mysql -uroot -prootpass

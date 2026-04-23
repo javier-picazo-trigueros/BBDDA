@@ -1,72 +1,89 @@
 ### Practica Ride Hailing - BBDD Avanazadas
-### Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
+### Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovas
 ### Grupo: 3A
 
 ---
 
 # Ride-Hailing Database
+
 Base de datos relacional para una plataforma de ride-hailing sobre MySQL 8.0.
 
 ## Estructura del repositorio
-├── init/
-│   └── schema.sql        # Creacion de BD, tablas, indices, vistas y triggers
-│   └── permissions.sql   # Roles, usuarios y permisos
-│   └── data.sql          # Carga masiva de datos de prueba
-├── .gitignore
-├── backup.sql            # Plan de backup, verificacion y comandos PITR
-├── compose.yml           # Docker Compose para despliegue
-├── dashboard.sql         # Dashboards de BD y de negocio
-├── mysql/
-│   └── custom.cnf        # Configuracion de MySQL
-├── DESIGN.md             # Diseño con Mermaid, decisiones, indices
-├── queries.sql           # Consultas operativas, SPs con locks y transacciones
-├── README.md             # Detalles e instrucciones de arranque y funcionamiento
-└── presentacion.pdf      # Presentacion para la defensa
+
+```text
+.
+|- backup.sql
+|- compose.yml
+|- dashboard.sql
+|- data.sql
+|- DESIGN.md
+|- permissions.sql
+|- queries.sql
+|- README.md
+|- schema.sql
+|- backups/
+`- mysql/
+   `- conf.d/
+      `- custom.cnf
+```
 
 ## Requisitos
+
 - Docker y Docker Compose instalados
 
 ## Arrancar la base de datos
+
 ```bash
-# 1. Levantar el contenedor (primera vez carga schema + datos automaticamente)
 docker compose up -d
-
-# 2. Verificar que esta sano
 docker compose ps
-
-# 3. Conectarse a MySQL
 docker exec -it ridehailing-db mysql -uroot -prootpass ridehailing
 ```
 
-La primera vez que se levanta el contenedor, Docker ejecuta automaticamente en orden:
-1. `schema.sql` — Crea la BD `ridehailing`, tablas, indices, vistas y triggers.
-2. `data.sql` — Inserta datos de prueba (5 companies, 30 usuarios, 10 vehículos, 60+ viajes, ofertas y pagos).
-3. `permissions.sql` — Crea roles y usuarios de BD.
+La primera vez que se levanta el contenedor, Docker ejecuta automaticamente estos
+scripts en este orden:
 
-Los scripts de init solo se ejecutan si el volumen `mysql_data` está vacio. Para reiniciar desde cero: `docker compose down -v && docker compose up -d`.
+1. `schema.sql`: crea la base de datos, tablas, indices, vistas, stored procedures y triggers.
+2. `permissions.sql`: crea roles, usuarios y permisos.
+3. `data.sql`: inserta los datos de prueba.
 
-## Ejecutar dashboards
+Los scripts de inicializacion solo se ejecutan si el volumen `mysql_data` esta vacio.
+Para reiniciar desde cero:
+
 ```bash
-# Dashboard de metricas de base de datos
-docker exec -i ridehailing-db mysql -uroot -prootpass ridehailing < dashboard.sql
+docker compose down -v
+docker compose up -d
+```
 
-# Consultas operativas
+## Ejecutar dashboards y consultas
+
+```bash
+docker exec -i ridehailing-db mysql -uroot -prootpass ridehailing < dashboard.sql
 docker exec -i ridehailing-db mysql -uroot -prootpass ridehailing < queries.sql
 ```
 
-## Probar la concurrencia (aceptar oferta)
+`queries.sql` ya no define objetos del esquema: contiene operaciones de ejemplo,
+llamadas de prueba a los stored procedures y consultas de negocio.
+
+## Probar la concurrencia y el ciclo de vida
+
+Sobre una base recien cargada con `data.sql`, podeis probar esta secuencia:
+
 ```sql
--- Conectarse a MySQL y ejecutar:
 USE ridehailing;
 
--- Aceptar la oferta 1 por el conductor 21 (del 1 al 20 son riders)
-CALL sp_aceptar_oferta(1, 21, @resultado);
+CALL sp_aceptar_oferta(1, 22, @resultado);
+SELECT @resultado;
+
+CALL sp_iniciar_viaje(61, 22, @resultado);
+SELECT @resultado;
+
+CALL sp_finalizar_viaje(61, 8.500, 18.25, @resultado);
 SELECT @resultado;
 ```
 
 ## Backup y restore
+
 ```bash
-# Backup completo
 docker exec ridehailing-db mysqldump \
   -uroot -prootpass \
   --databases ridehailing \
@@ -75,25 +92,20 @@ docker exec ridehailing-db mysqldump \
   --set-gtid-purged=OFF \
   | gzip > backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
 
-# Restore
 zcat backups/backup_YYYYMMDD.sql.gz | \
   docker exec -i ridehailing-db mysql -uroot -prootpass
 ```
 
 ## Conectarse con distintos usuarios
-```bash
-# API backend (lectura + escritura operativa)
-docker exec -it ridehailing-db mysql -uapi_app -p'ApiApp_S3cur3!' ridehailing
 
-# Reporting (solo lectura sobre vistas)
+```bash
+docker exec -it ridehailing-db mysql -uapi_app -p'ApiApp_S3cur3!' ridehailing
 docker exec -it ridehailing-db mysql -ubi_reports -p'BiReports_R3ad0nly!' ridehailing
 ```
 
 ## Parar y limpiar
-```bash
-# Parar (conserva datos)
-docker compose down
 
-# Parar y borrar datos (siguiente up recarga todo desde cero)
+```bash
+docker compose down
 docker compose down -v
 ```
