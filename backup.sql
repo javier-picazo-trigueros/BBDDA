@@ -12,7 +12,6 @@ SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';
 SHOW BINARY LOGS;
 
 
--- Verificar integridad tras la restauracion
 USE ridehailing;
 
 

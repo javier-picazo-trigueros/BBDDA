@@ -12,7 +12,7 @@ USE ridehailing;
 -- DASHBOARD 1
 -- METRICAS DE BASE DE DATOS
 
--- DB-1. Tamaño de cada tabla en MB
+-- Tamaño de cada tabla en MB
 SELECT
   table_name                                            AS tabla,
   TABLE_ROWS                                            AS filas_estimadas,
@@ -23,7 +23,7 @@ FROM information_schema.tables
 WHERE table_schema = 'ridehailing'
 ORDER BY total_mb DESC;
 
--- DB-2. Conexiones activas vs límite configurado
+-- Conexiones activas vs limite configurado
 SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Threads_connected')      AS conexiones_activas,
@@ -32,7 +32,7 @@ SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Max_used_connections')    AS pico_historico;
 
--- DB-3. Buffer pool hit ratio
+-- Buffer pool hit ratio
 SELECT
   ROUND(
     (1 - (
@@ -44,7 +44,7 @@ SELECT
     )) * 100, 2
   ) AS buffer_pool_hit_ratio_pct;
 
--- DB-4. Contadores de operaciones (queries por tipo)
+-- Contadores de operaciones (queries por tipo)
 SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Slow_queries')  AS slow_queries_total,
@@ -57,7 +57,7 @@ SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Com_delete')    AS deletes;
 
--- DB-5. Contencion y esperas por locks de fila
+-- Contencion y esperas por locks de fila
 SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Innodb_deadlocks')         AS deadlocks,
@@ -66,7 +66,7 @@ SELECT
   (SELECT VARIABLE_VALUE FROM performance_schema.global_status
    WHERE VARIABLE_NAME = 'Innodb_row_lock_time_avg')  AS avg_lock_time_ms;
 
--- DB-6. Transacciones activas ahora mismo
+-- Transacciones activas ahora mismo
 SELECT
   trx_id,
   trx_state,
@@ -77,7 +77,7 @@ SELECT
 FROM information_schema.INNODB_TRX
 ORDER BY trx_started;
 
--- DB-7. Top 10 queries mas lentas
+-- Top 10 queries mas lentas
 SELECT
   DIGEST_TEXT,
   COUNT_STAR                            AS veces_ejecutada,
@@ -89,12 +89,12 @@ WHERE SCHEMA_NAME = 'ridehailing'
 ORDER BY avg_ms DESC
 LIMIT 10;
 
--- DB-8. Índices no usados
+-- Indices no usados
 SELECT OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME
 FROM sys.schema_unused_indexes
 WHERE OBJECT_SCHEMA = 'ridehailing';
 
--- DB-9. Verificar configuración del slow query log y binlog
+-- Verificar configuración del slow query log y binlog
 SHOW VARIABLES LIKE 'slow_query_log%';
 SHOW VARIABLES LIKE 'long_query_time';
 SHOW VARIABLES LIKE 'log_bin';
@@ -105,7 +105,7 @@ SHOW VARIABLES LIKE 'binlog_format';
 
 -- DASHBOARD 2: MÉTRICAS DE NEGOCIO
 
--- BIZ-1. KPIs globales del sistema
+-- KPIs globales del sistema
 SELECT
   COUNT(*)                                                              AS total_viajes,
   SUM(estado = 'finalizado')                                           AS finalizados,
@@ -118,7 +118,7 @@ SELECT
   ROUND(SUM(CASE WHEN estado = 'finalizado' THEN precio_euros END), 2) AS ingresos_totales
 FROM viaje;
 
--- BIZ-2. Viajes por hora (últimas 24 h)
+-- Viajes por hora (últimas 24 h)
 SELECT
   DATE_FORMAT(solicitado_at, '%Y-%m-%d %H:00') AS hora,
   COUNT(*)                                      AS total_viajes,
@@ -129,19 +129,19 @@ WHERE solicitado_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
 GROUP BY hora
 ORDER BY hora;
 
--- BIZ-3. Tasa de aceptación de ofertas por día (últimos 7 días)
+-- Tasa de aceptación de ofertas por día (últimos 7 días)
 SELECT
-  DATE(enviada_at)                                                       AS dia,
-  COUNT(*)                                                               AS total_ofertas,
-  SUM(estado = 'aceptada')                                              AS aceptadas,
-  SUM(estado = 'rechazada')                                             AS rechazadas,
-  ROUND(100 * SUM(estado = 'aceptada') / NULLIF(COUNT(*), 0), 1)       AS tasa_aceptacion_pct
+  DATE(enviada_at)                                                 AS dia,
+  COUNT(*)                                                        AS total_ofertas,
+  SUM(estado = 'aceptada')                                        AS aceptadas,
+  SUM(estado = 'rechazada')                                        AS rechazadas,
+  ROUND(100 * SUM(estado = 'aceptada') / NULLIF(COUNT(*), 0), 1)   AS tasa_aceptacion_pct
 FROM oferta
 WHERE enviada_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
 GROUP BY dia
 ORDER BY dia;
 
--- BIZ-4. Top 5 conductores por ingresos (últimos 30 días)
+-- Top 5 conductores por ingresos (últimos 30 días)
 SELECT
   CONCAT(u.nombre, ' ', u.apellidos)                                    AS conductor,
   co.nombre                                                             AS company,
@@ -159,10 +159,10 @@ GROUP BY v.id_conductor, conductor, company
 ORDER BY ingresos_eur DESC
 LIMIT 5;
 
--- BIZ-5. Métricas por company
+-- Métricas por company
 SELECT * FROM v_metricas_company ORDER BY ingresos_totales DESC;
 
--- BIZ-6. Tiempo medio de espera del rider (solicitud → inicio del viaje)
+-- Tiempo medio de espera del rider (solicitud → inicio del viaje)
 SELECT
   ROUND(AVG(TIMESTAMPDIFF(SECOND, solicitado_at, inicio_at)) / 60, 2) AS espera_media_min,
   ROUND(MIN(TIMESTAMPDIFF(SECOND, solicitado_at, inicio_at)) / 60, 2) AS espera_min,
@@ -171,7 +171,7 @@ FROM viaje
 WHERE estado = 'finalizado'
   AND inicio_at IS NOT NULL;
 
--- BIZ-7. Distribución de viajes por franja horaria
+-- Distribución de viajes por franja horaria
 SELECT
   CASE
     WHEN HOUR(solicitado_at) BETWEEN  6 AND  9 THEN 'Mañana temprano (06-09)'
@@ -187,7 +187,7 @@ WHERE estado = 'finalizado'
 GROUP BY franja
 ORDER BY viajes DESC;
 
--- BIZ-8. Riders más activos
+-- Riders más activos
 SELECT
   CONCAT(u.nombre, ' ', u.apellidos) AS rider,
   COUNT(v.id_viaje)                   AS total_viajes,
@@ -199,6 +199,6 @@ GROUP BY v.id_rider, rider
 ORDER BY total_viajes DESC
 LIMIT 10;
 
--- BIZ-9. Planes de ejecucion sobre consultas indexadas
+-- Planes de ejecucion sobre consultas indexadas
 EXPLAIN SELECT * FROM viaje WHERE estado = 'finalizado';
 EXPLAIN SELECT * FROM viaje WHERE estado = 'finalizado' AND solicitado_at >= '2025-01-01';

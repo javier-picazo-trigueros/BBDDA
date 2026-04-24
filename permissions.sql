@@ -17,6 +17,7 @@ CREATE ROLE IF NOT EXISTS 'rol_dba';       -- Administracion
 -- rol_app: lectura global y ejecucion de procedures
 GRANT SELECT ON ridehailing.* TO 'rol_app';
 GRANT EXECUTE ON ridehailing.* TO 'rol_app';
+
 -- Escritura acotada a tablas operativas
 GRANT INSERT, UPDATE ON ridehailing.usuario TO 'rol_app';
 GRANT INSERT, UPDATE ON ridehailing.conductor TO 'rol_app';

@@ -7,7 +7,6 @@ USE ridehailing;
 
 
 -- SECCION 1: OPERATIVA BASICA - INSERT, UPDATE, DELETE
-
 INSERT INTO usuario (tipo, nombre, apellidos, email, telefono, dni)
 VALUES ('rider', 'Nuevo', 'Rider Ejemplo', 'nuevo.rider@mail.es', '699000099', '99000099Z');
 
@@ -54,6 +53,7 @@ UPDATE oferta
 SET estado = 'expirada'
 WHERE estado = 'pendiente'
   AND enviada_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE);
+
 
 
 -- SECCION 2: OPERACIONES TRANSACCIONALES
