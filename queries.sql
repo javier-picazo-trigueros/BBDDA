@@ -1,6 +1,7 @@
 -- ============================================================
 -- Practica Ride Hailing - BBDD Avanazadas
--- Consultas operativas
+-- Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovas
+-- Grupo: 3A
 -- ============================================================
 
 USE ridehailing;

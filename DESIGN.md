@@ -10,126 +10,136 @@ Base de datos relacional para una plataforma de ride-hailing (tipo Uber/Cabify) 
 
 ## 2. Modelo Entidad-Relacion con Mermaid
 ```mermaid
+---
+config:
+  layout: elk
+  theme: redux-color
+---
 erDiagram
-    COMPANY ||--o{ CONDUCTOR : "emplea"
-    USUARIO ||--o| CONDUCTOR : "extiende (1:1)"
-    USUARIO ||--o{ VIAJE : "solicita (rider)"
-    CONDUCTOR ||--o{ VIAJE : "realiza"
-    CONDUCTOR ||--o{ OFERTA : "recibe"
-    CONDUCTOR }o--o{ VEHICULO : "conduce (N:N temporal)"
-    VIAJE ||--o{ OFERTA : "genera"
-    VIAJE ||--o| PAGO : "produce (1:1)"
-    VIAJE ||--o| VEHICULO : "usa"
-    USUARIO ||--o{ PAGO : "paga (rider)"
-    CONDUCTOR ||--o{ PAGO : "cobra"
+	direction LR
+	USUARIO {
+		BIGINT id_usuario PK ""  
+		ENUM tipo  ""  
+		VARCHAR nombre  ""  
+		VARCHAR apellidos  ""  
+		VARCHAR email UK ""  
+		VARCHAR telefono  ""  
+		VARCHAR dni UK ""  
+		BOOLEAN activo  ""  
+		DATETIME created_at  ""  
+		DATETIME updated_at  ""  
+	}
 
-    COMPANY {
-        BIGINT id_company PK
-        VARCHAR nombre
-        VARCHAR cif UK
-        VARCHAR email UK
-        BOOLEAN activo
-        DATETIME created_at
-        DATETIME updated_at
-    }
+	CONDUCTOR {
+		BIGINT id_conductor PK,FK ""  
+		BIGINT id_company FK ""  
+		VARCHAR licencia UK ""  
+		DATE fecha_alta  ""  
+		BOOLEAN disponible  ""  
+		DECIMAL rating  ""  
+		DATETIME created_at  ""  
+		DATETIME updated_at  ""  
+	}
 
-    USUARIO {
-        BIGINT id_usuario PK
-        ENUM tipo "rider | conductor"
-        VARCHAR nombre
-        VARCHAR apellidos
-        VARCHAR email UK
-        VARCHAR telefono
-        VARCHAR dni UK
-        BOOLEAN activo
-        DATETIME created_at
-        DATETIME updated_at
-    }
+	COMPANY {
+		BIGINT id_company PK ""  
+		VARCHAR nombre  ""  
+		VARCHAR cif UK ""  
+		VARCHAR email UK ""  
+		BOOLEAN activo  ""  
+		DATETIME created_at  ""  
+		DATETIME updated_at  ""  
+	}
 
-    CONDUCTOR {
-        BIGINT id_conductor PK_FK "FK → usuario"
-        BIGINT id_company FK
-        VARCHAR licencia UK
-        DATE fecha_alta
-        BOOLEAN disponible
-        DECIMAL rating
-        DATETIME created_at
-        DATETIME updated_at
-    }
+	CONDUCTOR_VEHICULO {
+		BIGINT id_conductor PK,FK ""  
+		BIGINT id_vehiculo PK,FK ""  
+		DATE fecha_desde PK ""  
+		DATE fecha_hasta  ""  
+	}
 
-    VEHICULO {
-        BIGINT id_vehiculo PK
-        VARCHAR matricula UK
-        VARCHAR marca
-        VARCHAR modelo
-        YEAR anio
-        VARCHAR color
-        BOOLEAN activo
-        DATETIME created_at
-        DATETIME updated_at
-    }
+	VEHICULO {
+		BIGINT id_vehiculo PK ""  
+		VARCHAR matricula UK ""  
+		VARCHAR marca  ""  
+		VARCHAR modelo  ""  
+		YEAR anio  ""  
+		VARCHAR color  ""  
+		BOOLEAN activo  ""  
+		DATETIME created_at  ""  
+		DATETIME updated_at  ""  
+	}
 
-    CONDUCTOR_VEHICULO {
-        BIGINT id_conductor PK_FK
-        BIGINT id_vehiculo PK_FK
-        DATE fecha_desde PK
-        DATE fecha_hasta "NULL = vigente"
-    }
+	VIAJE {
+		BIGINT id_viaje PK ""  
+		BIGINT id_rider FK ""  
+		BIGINT id_conductor FK ""  
+		BIGINT id_vehiculo FK ""  
+		ENUM estado  ""  
+		DECIMAL origen_lat  ""  
+		DECIMAL origen_lng  ""  
+		VARCHAR origen_desc  ""  
+		DECIMAL destino_lat  ""  
+		DECIMAL destino_lng  ""  
+		VARCHAR destino_desc  ""  
+		DECIMAL distancia_km  ""  
+		DECIMAL duracion_min  ""  
+		DECIMAL precio_euros  ""  
+		DATETIME solicitado_at  ""  
+		DATETIME aceptado_at  ""  
+		DATETIME inicio_at  ""  
+		DATETIME fin_at  ""  
+		DATETIME cancelado_at  ""  
+		VARCHAR motivo_cancelacion  ""  
+		DATETIME created_at  ""  
+		DATETIME updated_at  ""  
+	}
 
-    VIAJE {
-        BIGINT id_viaje PK
-        BIGINT id_rider FK
-        BIGINT id_conductor FK "NULL hasta aceptación"
-        BIGINT id_vehiculo FK
-        ENUM estado "solicitado | aceptado | en_curso | finalizado | cancelado"
-        DECIMAL origen_lat
-        DECIMAL origen_lng
-        VARCHAR origen_desc
-        DECIMAL destino_lat
-        DECIMAL destino_lng
-        VARCHAR destino_desc
-        DECIMAL distancia_km
-        DECIMAL duracion_min
-        DECIMAL precio_euros
-        DATETIME solicitado_at
-        DATETIME aceptado_at
-        DATETIME inicio_at
-        DATETIME fin_at
-        DATETIME cancelado_at
-        VARCHAR motivo_cancelacion
-    }
+	OFERTA {
+		BIGINT id_oferta PK ""  
+		BIGINT id_viaje FK ""  
+		BIGINT id_conductor FK ""  
+		ENUM estado  ""  
+		DATETIME enviada_at  ""  
+		DATETIME respondida_at  ""  
+	}
 
-    OFERTA {
-        BIGINT id_oferta PK
-        BIGINT id_viaje FK
-        BIGINT id_conductor FK
-        ENUM estado "pendiente | aceptada | rechazada | expirada"
-        DATETIME enviada_at
-        DATETIME respondida_at
-    }
+	PAGO {
+		BIGINT id_pago PK ""  
+		BIGINT id_viaje FK,UK ""  
+		BIGINT id_rider FK ""  
+		BIGINT id_conductor FK ""  
+		DECIMAL importe_euros  ""  
+		ENUM metodo  ""  
+		ENUM estado  ""  
+		DATETIME procesado_at  ""  
+		DATETIME created_at  ""  
+	}
 
-    PAGO {
-        BIGINT id_pago PK
-        BIGINT id_viaje FK_UK "1 pago por viaje"
-        BIGINT id_rider FK
-        BIGINT id_conductor FK
-        DECIMAL importe_euros
-        ENUM metodo "tarjeta | efectivo | wallet"
-        ENUM estado "pendiente | completado | fallido | reembolsado"
-        DATETIME procesado_at
-    }
+	AUDITORIA {
+		BIGINT id_auditoria PK ""  
+		VARCHAR tabla  ""  
+		ENUM operacion  ""  
+		BIGINT id_registro  ""  
+		VARCHAR campo  ""  
+		TEXT valor_old  ""  
+		TEXT valor_new  ""  
+		VARCHAR usuario_bd  ""  
+		DATETIME fecha  ""  
+	}
 
-    AUDITORIA {
-        BIGINT id_auditoria PK
-        VARCHAR tabla
-        ENUM operacion "INSERT | UPDATE | DELETE"
-        BIGINT id_registro
-        VARCHAR campo
-        TEXT valor_old
-        TEXT valor_new
-        VARCHAR usuario_bd
-        DATETIME fecha
-    }
+	USUARIO||--o|CONDUCTOR:"es subtipo (1:1)"
+	COMPANY||--o{CONDUCTOR:"emplea (1:N)"
+	CONDUCTOR||--o{CONDUCTOR_VEHICULO:"tiene asignado (1:N)"
+	VEHICULO||--o{CONDUCTOR_VEHICULO:"se asigna a (1:N)"
+	USUARIO||--o{VIAJE:"solicita como rider (1:N)"
+	CONDUCTOR||--o{VIAJE:"acepta/conduce (1:N)"
+	VEHICULO||--o{VIAJE:"se utiliza en (1:N)"
+	VIAJE||--o{OFERTA:"genera (1:N)"
+	CONDUCTOR||--o{OFERTA:"recibe (1:N)"
+	VIAJE||--||PAGO:"genera (1:1)"
+	USUARIO||--o{PAGO:"paga (1:N)"
+	CONDUCTOR||--o{PAGO:"cobra (1:N)"
 ```
 
 ## 3. Decisiones de diseño
