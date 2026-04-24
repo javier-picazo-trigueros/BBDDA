@@ -1,4 +1,4 @@
-### Practica Ride Hailing - BBDD Avanazadas
+### Diseño de la Base de Datos Ride-Hailing  - BBDD Avanazadas
 ### Autores: Javier Picazo, Alejandro Bernaldo de Quiros, Pablo Cerdeira y Jaime Ordovás
 ### Grupo: 3A
 
