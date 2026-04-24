@@ -457,7 +457,7 @@ proc_label: BEGIN
 
   UPDATE conductor
   SET disponible = FALSE
-  WHERE id_conductor = p_id_conductor;
+  WHERE id_conductor = p_id_conductor; 
 
   COMMIT;
   SET p_resultado = CONCAT('OK: viaje ', p_id_viaje, ' en curso');
