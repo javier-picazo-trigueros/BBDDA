@@ -5,11 +5,9 @@
 ---
 
 # Ride-Hailing Database
-
 Base de datos relacional para una plataforma de ride-hailing sobre MySQL 8.0.
 
 ## Estructura del repositorio
-
 ```text
 .
 |- backup.sql
@@ -28,11 +26,9 @@ Base de datos relacional para una plataforma de ride-hailing sobre MySQL 8.0.
 ```
 
 ## Requisitos
-
 - Docker y Docker Compose instalados
 
 ## Arrancar la base de datos
-
 ```bash
 docker compose up -d
 docker compose ps
@@ -55,7 +51,6 @@ docker compose up -d
 ```
 
 ## Ejecutar dashboards y consultas
-
 ```bash
 docker exec -i ridehailing-db mysql -uroot -prootpass ridehailing < dashboard.sql
 docker exec -i ridehailing-db mysql -uroot -prootpass ridehailing < queries.sql
@@ -64,10 +59,9 @@ docker exec -i ridehailing-db mysql -uroot -prootpass ridehailing < queries.sql
 `queries.sql` ya no define objetos del esquema: contiene operaciones de ejemplo,
 llamadas de prueba a los stored procedures y consultas de negocio.
 
+
 ## Probar la concurrencia y el ciclo de vida
-
 Sobre una base recien cargada con `data.sql`, podeis probar esta secuencia:
-
 ```sql
 USE ridehailing;
 
@@ -81,8 +75,8 @@ CALL sp_finalizar_viaje(61, 8.500, 18.25, @resultado);
 SELECT @resultado;
 ```
 
-## Backup y restore
 
+## Backup y restore
 ```bash
 docker exec ridehailing-db mysqldump \
   -uroot -prootpass \
@@ -96,15 +90,15 @@ zcat backups/backup_YYYYMMDD.sql.gz | \
   docker exec -i ridehailing-db mysql -uroot -prootpass
 ```
 
-## Conectarse con distintos usuarios
 
+## Conectarse con distintos usuarios
 ```bash
 docker exec -it ridehailing-db mysql -uapi_app -p'ApiApp_S3cur3!' ridehailing
 docker exec -it ridehailing-db mysql -ubi_reports -p'BiReports_R3ad0nly!' ridehailing
 ```
 
-## Parar y limpiar
 
+## Parar y limpiar
 ```bash
 docker compose down
 docker compose down -v
