@@ -348,7 +348,7 @@ CREATE PROCEDURE sp_aceptar_oferta(
   IN  p_id_conductor BIGINT,
   OUT p_resultado    VARCHAR(100)
 )
-proc_label: BEGIN
+BEGIN
   DECLARE v_id_viaje      BIGINT;
   DECLARE v_estado_viaje  VARCHAR(20);
   DECLARE v_estado_oferta VARCHAR(20);
@@ -362,60 +362,62 @@ proc_label: BEGIN
 
   START TRANSACTION;
 
-  -- Obtener el viaje asociado a la oferta
-  SELECT id_viaje INTO v_id_viaje FROM oferta WHERE id_oferta = p_id_oferta;
+  -- Paso 1: bloqueo exclusivo sobre la oferta
+  SELECT o.id_viaje, o.estado
+  INTO   v_id_viaje, v_estado_oferta
+  FROM   oferta o
+  WHERE  o.id_oferta    = p_id_oferta
+    AND  o.id_conductor = p_id_conductor
+  FOR UPDATE;
 
-  IF v_id_viaje IS NULL THEN
-    ROLLBACK; SET p_resultado = 'ERROR: Oferta no encontrada'; LEAVE proc_label;
-  END IF;
-
-  -- Bloquear el viaje antes de actualizar sus ofertas
-  SELECT estado INTO v_estado_viaje FROM viaje WHERE id_viaje = v_id_viaje FOR UPDATE;
-
-  IF v_estado_viaje != 'solicitado' THEN
-    ROLLBACK; SET p_resultado = 'ERROR: El viaje ya fue aceptado por otro conductor'; LEAVE proc_label;
-  END IF;
-
-  -- Bloquear la oferta del conductor
-  SELECT estado INTO v_estado_oferta FROM oferta
-  WHERE id_oferta = p_id_oferta AND id_conductor = p_id_conductor FOR UPDATE;
-
-  -- Validar que la oferta pertenezca al conductor y siga pendiente
-  IF v_estado_oferta IS NULL OR v_estado_oferta != 'pendiente' THEN
+  IF v_estado_oferta != 'pendiente' THEN
     ROLLBACK;
-    SET p_resultado = 'ERROR: La oferta no pertenece al conductor o no está pendiente';
-    LEAVE proc_label;
+    SET p_resultado = 'ERROR: la oferta ya no está pendiente';
+  ELSE
+
+    -- Paso 2: bloqueo exclusivo sobre el viaje
+    SELECT estado INTO v_estado_viaje
+    FROM viaje
+    WHERE id_viaje = v_id_viaje
+    FOR UPDATE;
+
+    IF v_estado_viaje != 'solicitado' THEN
+      ROLLBACK;
+      SET p_resultado = 'ERROR: el viaje ya fue aceptado por otro conductor';
+    ELSE
+
+      -- Paso 3: vehículo vigente del conductor
+      SELECT id_vehiculo INTO v_id_vehiculo
+      FROM conductor_vehiculo
+      WHERE id_conductor = p_id_conductor
+        AND fecha_hasta IS NULL
+      LIMIT 1;
+
+      -- Paso 4: marcar oferta como aceptada
+      UPDATE oferta
+      SET estado = 'aceptada', respondida_at = NOW()
+      WHERE id_oferta = p_id_oferta;
+
+      -- Paso 5: rechazar el resto de ofertas pendientes del viaje
+      UPDATE oferta
+      SET estado = 'rechazada', respondida_at = NOW()
+      WHERE id_viaje     = v_id_viaje
+        AND id_conductor != p_id_conductor
+        AND estado       = 'pendiente';
+
+      -- Paso 6: asignar conductor al viaje
+      UPDATE viaje
+      SET estado       = 'aceptado',
+          id_conductor = p_id_conductor,
+          id_vehiculo  = v_id_vehiculo,
+          aceptado_at  = NOW()
+      WHERE id_viaje = v_id_viaje;
+
+      COMMIT;
+      SET p_resultado = CONCAT('OK: viaje ', v_id_viaje, ' asignado al conductor ', p_id_conductor);
+
+    END IF;
   END IF;
-
-  -- Obtener el vehiculo vigente del conductor
-  SELECT id_vehiculo INTO v_id_vehiculo FROM conductor_vehiculo
-  WHERE id_conductor = p_id_conductor AND fecha_hasta IS NULL LIMIT 1;
-
-  IF v_id_vehiculo IS NULL THEN
-    ROLLBACK; SET p_resultado = 'ERROR: El conductor no tiene vehículo asignado'; LEAVE proc_label;
-  END IF;
-
-  -- Confirmar la aceptacion solo sobre la oferta del conductor
-  UPDATE oferta
-  SET estado = 'aceptada', respondida_at = NOW()
-  WHERE id_oferta = p_id_oferta AND id_conductor = p_id_conductor;
-
-  UPDATE oferta
-  SET estado = 'rechazada',
-      respondida_at = NOW()
-  WHERE id_viaje = v_id_viaje
-    AND id_conductor != p_id_conductor
-    AND estado = 'pendiente';
-
-  UPDATE viaje
-  SET estado = 'aceptado',
-      id_conductor = p_id_conductor,
-      id_vehiculo = v_id_vehiculo,
-      aceptado_at = NOW()
-  WHERE id_viaje = v_id_viaje;
-
-  COMMIT;
-  SET p_resultado = CONCAT('OK: viaje ', v_id_viaje, ' asignado al conductor ', p_id_conductor);
 END$$
 
 

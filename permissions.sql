@@ -14,15 +14,12 @@ CREATE ROLE IF NOT EXISTS 'rol_dba';       -- Administracion
 
 
 -- Permisos por rol
--- rol_app: lectura global y ejecucion de procedures
-GRANT SELECT ON ridehailing.* TO 'rol_app';
+-- rol_app: SELECT/INSERT/UPDATE en toda la BD, sin DDL
+GRANT SELECT, INSERT, UPDATE ON ridehailing.* TO 'rol_app';
+-- Excepción: DELETE en oferta para expirar ofertas antiguas
+GRANT DELETE ON ridehailing.oferta TO 'rol_app';
+-- Puede llamar a los stored procedures
 GRANT EXECUTE ON ridehailing.* TO 'rol_app';
-
--- Escritura acotada a tablas operativas
-GRANT INSERT, UPDATE ON ridehailing.usuario TO 'rol_app';
-GRANT INSERT, UPDATE ON ridehailing.conductor TO 'rol_app';
-GRANT INSERT, UPDATE ON ridehailing.vehiculo TO 'rol_app';
-GRANT INSERT, UPDATE ON ridehailing.conductor_vehiculo TO 'rol_app';
 
 -- rol_analytics: lectura a traves de vistas
 -- Exponer unicamente vistas de reporting
@@ -69,6 +66,19 @@ CREATE USER IF NOT EXISTS 'dba_admin'@'localhost'
 GRANT 'rol_dba' TO 'dba_admin'@'localhost';
 SET DEFAULT ROLE 'rol_dba' TO 'dba_admin'@'localhost';
 
+-- rol_monitor: permisos mínimos para mysqld_exporter (Prometheus)
+-- PROCESS: ver procesos activos
+-- REPLICATION CLIENT: leer estado del binlog
+-- SELECT *.*: métricas de performance_schema e information_schema
+CREATE ROLE IF NOT EXISTS 'rol_monitor';
+GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'rol_monitor';
+
+-- exporter: usuario para mysqld_exporter, se conecta desde otro contenedor
+CREATE USER IF NOT EXISTS 'exporter'@'%'
+  IDENTIFIED WITH caching_sha2_password BY 'Exporter_M0n1tor!';
+GRANT 'rol_monitor' TO 'exporter'@'%';
+SET DEFAULT ROLE 'rol_monitor' TO 'exporter'@'%';
+
 FLUSH PRIVILEGES;
 
 
@@ -79,4 +89,5 @@ FLUSH PRIVILEGES;
 -- SHOW GRANTS FOR 'bi_reports'@'%';
 -- SHOW GRANTS FOR 'backup_user'@'localhost';
 -- SHOW GRANTS FOR 'dba_admin'@'localhost';
+-- SHOW GRANTS FOR 'exporter'@'%';
 -- SELECT user, host, plugin, account_locked FROM mysql.user ORDER BY user;
