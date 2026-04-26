@@ -204,11 +204,12 @@ Tres triggers `AFTER INSERT/UPDATE` sobre `viaje` y `oferta` registran cambios e
 | `sp_finalizar_viaje` | Calcula precio, finaliza viaje, crea pago, libera conductor | `FOR UPDATE` sobre viaje |
 
 ## 7. Seguridad
-Hay 4 roles con principio de minimo privilegio:
-- **rol_app**: SELECT/INSERT/UPDATE + EXECUTE (API backend).
+Hay 5 roles con principio de mínimo privilegio:
+- **rol_app**: SELECT/INSERT/UPDATE + DELETE en oferta + EXECUTE (API backend).
 - **rol_analytics**: SELECT solo sobre vistas (reporting).
 - **rol_backup**: SELECT + RELOAD + LOCK TABLES (mysqldump).
 - **rol_dba**: ALL PRIVILEGES sobre ridehailing + PROCESS/RELOAD global.
+- **rol_monitor**: PROCESS + REPLICATION CLIENT + SELECT global (mysqld_exporter / Prometheus).
 
 ## 8. Backup
 - **RPO**: 1 hora (binlog continuo entre backups).

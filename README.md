@@ -19,6 +19,8 @@ Base de datos relacional para una plataforma de ride-hailing sobre MySQL 8.0.
 |- queries.sql
 |- README.md
 |- schema.sql
+|- scripts/
+|  `- backup_mysql.sh
 |- backups/
 `- mysql/
    `- conf.d/
