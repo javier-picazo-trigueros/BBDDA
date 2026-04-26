@@ -219,7 +219,11 @@ SELECT
   v.id_rider,
   v.id_conductor,
   v.precio_euros,
-  ELT(1 + MOD(v.id_viaje, 3), 'tarjeta', 'wallet', 'tarjeta'),
+  CASE MOD(v.id_viaje, 3)
+    WHEN 0 THEN 'tarjeta'
+    WHEN 1 THEN 'wallet'
+    ELSE        'tarjeta'
+  END,
   'completado',
   v.fin_at
 FROM viaje v

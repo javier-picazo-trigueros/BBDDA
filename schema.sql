@@ -269,74 +269,60 @@ WHERE u.activo = TRUE;
 
 
 CREATE VIEW v_metricas_conductor AS
-WITH stats_viaje AS (
-  SELECT
-    id_conductor,
-    COUNT(id_viaje) AS total_viajes,
-    SUM(estado = 'finalizado') AS viajes_finalizados,
-    SUM(estado = 'cancelado') AS viajes_cancelados,
-    ROUND(SUM(CASE WHEN estado = 'finalizado' THEN IFNULL(distancia_km, 0) ELSE 0 END), 2)
-      AS km_totales,
-    ROUND(SUM(CASE WHEN estado = 'finalizado' THEN IFNULL(duracion_min, 0) ELSE 0 END), 2)
-      AS min_totales,
-    ROUND(SUM(CASE WHEN estado = 'finalizado' THEN IFNULL(precio_euros, 0) ELSE 0 END), 2)
-      AS ingresos_totales
-  FROM viaje
-  WHERE id_conductor IS NOT NULL
-  GROUP BY id_conductor
-),
-stats_oferta AS (
-  SELECT
-    id_conductor,
-    COUNT(id_oferta) AS ofertas_recibidas,
-    SUM(estado = 'aceptada') AS ofertas_aceptadas
-  FROM oferta
-  GROUP BY id_conductor
-)
 SELECT
   c.id_conductor,
   co.id_company,
-  CONCAT(u.nombre, ' ', u.apellidos) AS conductor_nombre,
-  co.nombre                          AS company,
-  IFNULL(v.total_viajes, 0)          AS total_viajes,
-  IFNULL(v.viajes_finalizados, 0)    AS viajes_finalizados,
-  IFNULL(v.viajes_cancelados, 0)     AS viajes_cancelados,
-  IFNULL(v.km_totales, 0)            AS km_totales,
-  IFNULL(v.min_totales, 0)           AS min_totales,
-  IFNULL(v.ingresos_totales, 0)      AS ingresos_totales,
+  CONCAT(u.nombre, ' ', u.apellidos)                               AS conductor_nombre,
+  co.nombre                                                        AS company,
+  COUNT(v.id_viaje)                                                AS total_viajes,
+  COUNT(CASE WHEN v.estado = 'finalizado' THEN 1 END)              AS viajes_finalizados,
+  COUNT(CASE WHEN v.estado = 'cancelado'  THEN 1 END)              AS viajes_cancelados,
+  ROUND(SUM(CASE WHEN v.estado = 'finalizado'
+    THEN IFNULL(v.distancia_km, 0) ELSE 0 END), 2)                 AS km_totales,
+  ROUND(SUM(CASE WHEN v.estado = 'finalizado'
+    THEN IFNULL(v.duracion_min, 0) ELSE 0 END), 2)                 AS min_totales,
+  ROUND(SUM(CASE WHEN v.estado = 'finalizado'
+    THEN IFNULL(v.precio_euros, 0) ELSE 0 END), 2)                 AS ingresos_totales,
   ROUND(
-    IFNULL(v.ingresos_totales, 0) / NULLIF(IFNULL(v.km_totales, 0), 0), 2
-  ) AS eur_por_km,
+    SUM(CASE WHEN v.estado = 'finalizado' THEN IFNULL(v.precio_euros, 0) ELSE 0 END)
+    / NULLIF(SUM(CASE WHEN v.estado = 'finalizado'
+      THEN IFNULL(v.distancia_km, 0) ELSE 0 END), 0), 2
+  )                                                                AS eur_por_km,
   ROUND(
-    IFNULL(v.ingresos_totales, 0) / NULLIF(IFNULL(v.min_totales, 0), 0), 2
-  ) AS eur_por_min,
-  IFNULL(o.ofertas_recibidas, 0)     AS ofertas_recibidas,
-  IFNULL(o.ofertas_aceptadas, 0)     AS ofertas_aceptadas,
+    SUM(CASE WHEN v.estado = 'finalizado' THEN IFNULL(v.precio_euros, 0) ELSE 0 END)
+    / NULLIF(SUM(CASE WHEN v.estado = 'finalizado'
+      THEN IFNULL(v.duracion_min, 0) ELSE 0 END), 0), 2
+  )                                                                AS eur_por_min,
+  COUNT(o.id_oferta)                                               AS ofertas_recibidas,
+  COUNT(CASE WHEN o.estado = 'aceptada' THEN 1 END)                AS ofertas_aceptadas,
   ROUND(
-    100.0 * IFNULL(o.ofertas_aceptadas, 0)
-    / NULLIF(IFNULL(o.ofertas_recibidas, 0), 0), 1
-  ) AS tasa_aceptacion_pct
+    100.0 * COUNT(CASE WHEN o.estado = 'aceptada' THEN 1 END)
+    / NULLIF(COUNT(o.id_oferta), 0), 1
+  )                                                                AS tasa_aceptacion_pct
 FROM conductor c
-JOIN usuario u      ON u.id_usuario = c.id_conductor
-JOIN company co     ON co.id_company = c.id_company
-LEFT JOIN stats_viaje v  ON v.id_conductor = c.id_conductor
-LEFT JOIN stats_oferta o ON o.id_conductor = c.id_conductor;
+JOIN usuario u       ON u.id_usuario  = c.id_conductor
+JOIN company co      ON co.id_company = c.id_company
+LEFT JOIN viaje  v   ON v.id_conductor = c.id_conductor
+LEFT JOIN oferta o   ON o.id_conductor = c.id_conductor
+GROUP BY c.id_conductor, co.id_company, conductor_nombre, company;
 
 
 CREATE VIEW v_metricas_company AS
-WITH base_company AS (
-  SELECT id_company, nombre AS company FROM company
-)
 SELECT
-  bc.id_company,
-  bc.company,
-  COUNT(DISTINCT m.id_conductor) AS num_conductores,
-  SUM(IFNULL(m.total_viajes, 0)) AS total_viajes,
-  ROUND(SUM(IFNULL(m.ingresos_totales, 0)), 2) AS ingresos_totales,
-  ROUND(AVG(m.tasa_aceptacion_pct), 1) AS tasa_media_company
-FROM base_company bc
-LEFT JOIN v_metricas_conductor m ON m.id_company = bc.id_company
-GROUP BY bc.id_company, bc.company;
+  co.id_company,
+  co.nombre                                                        AS company,
+  COUNT(DISTINCT c.id_conductor)                                   AS num_conductores,
+  COUNT(v.id_viaje)                                                AS total_viajes,
+  ROUND(SUM(v.precio_euros), 2)                                    AS ingresos_totales,
+  ROUND(
+    100.0 * COUNT(CASE WHEN o.estado = 'aceptada' THEN 1 END)
+    / NULLIF(COUNT(o.id_oferta), 0), 1
+  )                                                                AS tasa_media_company
+FROM company co
+LEFT JOIN conductor c ON c.id_company   = co.id_company
+LEFT JOIN viaje     v ON v.id_conductor = c.id_conductor
+LEFT JOIN oferta    o ON o.id_conductor = c.id_conductor
+GROUP BY co.id_company, co.nombre;
 
 
 -- Stored procedures y triggers
@@ -427,7 +413,7 @@ CREATE PROCEDURE sp_iniciar_viaje(
   IN  p_id_conductor BIGINT,
   OUT p_resultado    VARCHAR(100)
 )
-proc_label: BEGIN
+BEGIN
   DECLARE v_id_viaje BIGINT;
 
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -441,28 +427,27 @@ proc_label: BEGIN
   SELECT v.id_viaje
   INTO   v_id_viaje
   FROM   viaje v
-  WHERE  v.id_viaje = p_id_viaje
-    AND  v.id_conductor = p_id_conductor
-    AND  v.estado = 'aceptado'
+  WHERE  v.id_viaje      = p_id_viaje
+    AND  v.id_conductor  = p_id_conductor
+    AND  v.estado        = 'aceptado'
   FOR UPDATE;
 
   IF v_id_viaje IS NULL THEN
     ROLLBACK;
     SET p_resultado = 'ERROR: viaje no encontrado o no aceptado por ese conductor';
-    LEAVE proc_label;
+  ELSE
+    UPDATE viaje
+    SET estado    = 'en_curso',
+        inicio_at = NOW()
+    WHERE id_viaje = p_id_viaje;
+
+    UPDATE conductor
+    SET disponible = FALSE
+    WHERE id_conductor = p_id_conductor;
+
+    COMMIT;
+    SET p_resultado = CONCAT('OK: viaje ', p_id_viaje, ' en curso');
   END IF;
-
-  UPDATE viaje
-  SET estado = 'en_curso',
-      inicio_at = NOW()
-  WHERE id_viaje = p_id_viaje;
-
-  UPDATE conductor
-  SET disponible = FALSE
-  WHERE id_conductor = p_id_conductor; 
-
-  COMMIT;
-  SET p_resultado = CONCAT('OK: viaje ', p_id_viaje, ' en curso');
 END$$
 
 
@@ -473,7 +458,7 @@ CREATE PROCEDURE sp_finalizar_viaje(
   IN  p_duracion_min  DECIMAL(8,2),
   OUT p_resultado     VARCHAR(100)
 )
-proc_label: BEGIN
+BEGIN
   DECLARE v_conductor BIGINT;
   DECLARE v_rider     BIGINT;
   DECLARE v_precio    DECIMAL(10,2);
@@ -484,11 +469,6 @@ proc_label: BEGIN
     SET p_resultado = 'ERROR: no se pudo finalizar el viaje';
   END;
 
-  IF p_distancia_km <= 0 OR p_duracion_min <= 0 THEN
-    SET p_resultado = 'ERROR: la distancia y duracion deben ser mayores a cero';
-    LEAVE proc_label;
-  END IF;
-
   SET v_precio = ROUND(2.50 + p_distancia_km * 1.20 + p_duracion_min * 0.15, 2);
 
   START TRANSACTION;
@@ -497,35 +477,39 @@ proc_label: BEGIN
   INTO   v_conductor, v_rider
   FROM   viaje v
   WHERE  v.id_viaje = p_id_viaje
-    AND  v.estado = 'en_curso'
+    AND  v.estado   = 'en_curso'
   FOR UPDATE;
 
   IF v_conductor IS NULL OR v_rider IS NULL THEN
     ROLLBACK;
     SET p_resultado = 'ERROR: viaje no encontrado o no esta en curso';
-    LEAVE proc_label;
+  ELSE
+    IF p_distancia_km <= 0 OR p_duracion_min <= 0 THEN
+      ROLLBACK;
+      SET p_resultado = 'ERROR: la distancia y duracion deben ser mayores a cero';
+    ELSE
+      UPDATE viaje
+      SET estado       = 'finalizado',
+          distancia_km = p_distancia_km,
+          duracion_min = p_duracion_min,
+          precio_euros = v_precio,
+          fin_at       = NOW()
+      WHERE id_viaje = p_id_viaje;
+
+      UPDATE conductor
+      SET disponible = TRUE
+      WHERE id_conductor = v_conductor;
+
+      INSERT INTO pago (
+        id_viaje, id_rider, id_conductor, importe_euros, estado, procesado_at
+      ) VALUES (
+        p_id_viaje, v_rider, v_conductor, v_precio, 'completado', NOW()
+      );
+
+      COMMIT;
+      SET p_resultado = CONCAT('OK: viaje finalizado. Precio: ', v_precio, ' EUR');
+    END IF;
   END IF;
-
-  UPDATE viaje
-  SET estado = 'finalizado',
-      distancia_km = p_distancia_km,
-      duracion_min = p_duracion_min,
-      precio_euros = v_precio,
-      fin_at = NOW()
-  WHERE id_viaje = p_id_viaje;
-
-  UPDATE conductor
-  SET disponible = TRUE
-  WHERE id_conductor = v_conductor;
-
-  INSERT INTO pago (
-    id_viaje, id_rider, id_conductor, importe_euros, estado, procesado_at
-  ) VALUES (
-    p_id_viaje, v_rider, v_conductor, v_precio, 'completado', NOW()
-  );
-
-  COMMIT;
-  SET p_resultado = CONCAT('OK: viaje finalizado. Precio: ', v_precio, ' EUR');
 END$$
 
 
