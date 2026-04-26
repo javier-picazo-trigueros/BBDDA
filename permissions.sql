@@ -6,10 +6,10 @@
 
 
 -- Roles
-CREATE ROLE IF NOT EXISTS 'rol_app';       -- API backend: operativa diaria
+CREATE ROLE IF NOT EXISTS 'rol_app'; -- API backend: operativa diaria
 CREATE ROLE IF NOT EXISTS 'rol_analytics'; -- Reporting: solo lectura
-CREATE ROLE IF NOT EXISTS 'rol_backup';    -- Proceso de backup
-CREATE ROLE IF NOT EXISTS 'rol_dba';       -- Administracion
+CREATE ROLE IF NOT EXISTS 'rol_backup'; -- Proceso de backup
+CREATE ROLE IF NOT EXISTS 'rol_dba'; -- Administracion
 
 
 
@@ -67,9 +67,6 @@ GRANT 'rol_dba' TO 'dba_admin'@'localhost';
 SET DEFAULT ROLE 'rol_dba' TO 'dba_admin'@'localhost';
 
 -- rol_monitor: permisos mínimos para mysqld_exporter (Prometheus)
--- PROCESS: ver procesos activos
--- REPLICATION CLIENT: leer estado del binlog
--- SELECT *.*: métricas de performance_schema e information_schema
 CREATE ROLE IF NOT EXISTS 'rol_monitor';
 GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'rol_monitor';
 

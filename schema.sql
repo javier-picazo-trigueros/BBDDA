@@ -352,7 +352,7 @@ BEGIN
   SELECT o.id_viaje, o.estado
   INTO   v_id_viaje, v_estado_oferta
   FROM   oferta o
-  WHERE  o.id_oferta    = p_id_oferta
+  WHERE  o.id_oferta = p_id_oferta
     AND  o.id_conductor = p_id_conductor
   FOR UPDATE;
 
@@ -387,16 +387,16 @@ BEGIN
       -- Paso 5: rechazar el resto de ofertas pendientes del viaje
       UPDATE oferta
       SET estado = 'rechazada', respondida_at = NOW()
-      WHERE id_viaje     = v_id_viaje
+      WHERE id_viaje = v_id_viaje
         AND id_conductor != p_id_conductor
-        AND estado       = 'pendiente';
+        AND estado = 'pendiente';
 
       -- Paso 6: asignar conductor al viaje
       UPDATE viaje
-      SET estado       = 'aceptado',
+      SET estado = 'aceptado',
           id_conductor = p_id_conductor,
-          id_vehiculo  = v_id_vehiculo,
-          aceptado_at  = NOW()
+          id_vehiculo = v_id_vehiculo,
+          aceptado_at = NOW()
       WHERE id_viaje = v_id_viaje;
 
       COMMIT;
@@ -427,9 +427,9 @@ BEGIN
   SELECT v.id_viaje
   INTO   v_id_viaje
   FROM   viaje v
-  WHERE  v.id_viaje      = p_id_viaje
-    AND  v.id_conductor  = p_id_conductor
-    AND  v.estado        = 'aceptado'
+  WHERE  v.id_viaje = p_id_viaje
+    AND  v.id_conductor = p_id_conductor
+    AND  v.estado = 'aceptado'
   FOR UPDATE;
 
   IF v_id_viaje IS NULL THEN
@@ -437,7 +437,7 @@ BEGIN
     SET p_resultado = 'ERROR: viaje no encontrado o no aceptado por ese conductor';
   ELSE
     UPDATE viaje
-    SET estado    = 'en_curso',
+    SET estado = 'en_curso',
         inicio_at = NOW()
     WHERE id_viaje = p_id_viaje;
 
@@ -477,7 +477,7 @@ BEGIN
   INTO   v_conductor, v_rider
   FROM   viaje v
   WHERE  v.id_viaje = p_id_viaje
-    AND  v.estado   = 'en_curso'
+    AND  v.estado = 'en_curso'
   FOR UPDATE;
 
   IF v_conductor IS NULL OR v_rider IS NULL THEN
@@ -489,11 +489,11 @@ BEGIN
       SET p_resultado = 'ERROR: la distancia y duracion deben ser mayores a cero';
     ELSE
       UPDATE viaje
-      SET estado       = 'finalizado',
+      SET estado = 'finalizado',
           distancia_km = p_distancia_km,
           duracion_min = p_duracion_min,
           precio_euros = v_precio,
-          fin_at       = NOW()
+          fin_at = NOW()
       WHERE id_viaje = p_id_viaje;
 
       UPDATE conductor
